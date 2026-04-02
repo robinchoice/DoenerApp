@@ -7,7 +7,9 @@ struct PlaceDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var visits: [Visit] = []
+    @State private var reviews: [Review] = []
     @State private var showCheckInConfirmation = false
+    @State private var showReviewSheet = false
     @State private var checkInComment = ""
     @State private var justCheckedIn = false
 
@@ -60,7 +62,7 @@ struct PlaceDetailView: View {
                     }
 
                     ActionButton(title: "Bewerten", icon: "star.fill", color: .orange) {
-                        // TODO: Phase 3
+                        showReviewSheet = true
                     }
 
                     ActionButton(title: "Notiz", icon: "note.text", color: .blue) {
@@ -69,6 +71,20 @@ struct PlaceDetailView: View {
 
                     ActionButton(title: "Route", icon: "arrow.triangle.turn.up.right.diamond.fill", color: .purple) {
                         openInMaps()
+                    }
+                }
+
+                // Reviews
+                if !reviews.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Bewertungen (\(reviews.count))")
+                            .font(.headline)
+
+                        ForEach(reviews) { review in
+                            ReviewRow(review: review) {
+                                showReviewSheet = true
+                            }
+                        }
                     }
                 }
 
@@ -97,7 +113,17 @@ struct PlaceDetailView: View {
             }
             .padding()
         }
-        .onAppear { loadVisits() }
+        .onAppear {
+            loadVisits()
+            loadReviews()
+        }
+        .sheet(isPresented: $showReviewSheet) {
+            loadReviews()
+        } content: {
+            ReviewSheet(place: place, existingReview: reviews.first)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
         .overlay {
             if justCheckedIn {
                 CheckInToast()
@@ -139,10 +165,58 @@ struct PlaceDetailView: View {
         visits = (try? modelContext.fetch(descriptor)) ?? []
     }
 
+    private func loadReviews() {
+        let osmID = place.osmNodeID
+        let descriptor = FetchDescriptor<Review>(
+            predicate: #Predicate { $0.placeOsmNodeID == osmID },
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+        )
+        reviews = (try? modelContext.fetch(descriptor)) ?? []
+    }
+
     private func openInMaps() {
         let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: place.coordinate))
         mapItem.name = place.name
         mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
+    }
+}
+
+// MARK: - Review Row
+
+struct ReviewRow: View {
+    let review: Review
+    let onEdit: () -> Void
+
+    var body: some View {
+        GlassCard {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    HStack(spacing: 2) {
+                        ForEach(1...5, id: \.self) { star in
+                            Image(systemName: star <= review.rating ? "star.fill" : "star")
+                                .font(.caption)
+                                .foregroundStyle(star <= review.rating ? .orange : .gray.opacity(0.3))
+                        }
+                    }
+
+                    Spacer()
+
+                    Button("Bearbeiten", systemImage: "pencil") { onEdit() }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .labelStyle(.iconOnly)
+                }
+
+                if let text = review.text {
+                    Text(text)
+                        .font(.subheadline)
+                }
+
+                Text(review.createdAt, format: .dateTime.day().month().year())
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 
@@ -313,5 +387,5 @@ struct ActionButton: View {
         city: "Berlin",
         openingHours: "Mo-Su 10:00-02:00"
     ))
-    .modelContainer(for: [CachedPlace.self, Visit.self], inMemory: true)
+    .modelContainer(for: [CachedPlace.self, Visit.self, Review.self], inMemory: true)
 }

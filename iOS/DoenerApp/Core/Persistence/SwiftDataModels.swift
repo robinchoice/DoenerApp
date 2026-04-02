@@ -85,6 +85,25 @@ final class Visit {
 }
 
 @Model
+final class Review {
+    var placeOsmNodeID: Int64
+    var placeName: String
+    var rating: Int // 1-5
+    var text: String?
+    var createdAt: Date
+    var updatedAt: Date
+
+    init(placeOsmNodeID: Int64, placeName: String, rating: Int, text: String? = nil) {
+        self.placeOsmNodeID = placeOsmNodeID
+        self.placeName = placeName
+        self.rating = rating
+        self.text = text
+        self.createdAt = Date()
+        self.updatedAt = Date()
+    }
+}
+
+@Model
 final class PendingSyncOperation {
     var entityType: String
     var entityID: String

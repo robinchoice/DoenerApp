@@ -11,6 +11,7 @@ struct DoenerAppApp: App {
             CachedPlace.self,
             CachedRegion.self,
             Visit.self,
+            Review.self,
             PendingSyncOperation.self,
         ])
     }
