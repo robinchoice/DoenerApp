@@ -10,6 +10,7 @@ struct DoenerAppApp: App {
         .modelContainer(for: [
             CachedPlace.self,
             CachedRegion.self,
+            Visit.self,
             PendingSyncOperation.self,
         ])
     }

@@ -17,7 +17,7 @@ struct MapView: View {
 
                     ForEach(viewModel.places) { place in
                         Annotation(place.name, coordinate: place.coordinate) {
-                            DoenerPinView(place: place)
+                            DoenerPinView(place: place, visitCount: viewModel.visitCounts[place.osmNodeID] ?? 0)
                         }
                         .tag(place)
                     }
@@ -67,6 +67,7 @@ struct MapView: View {
                     .presentationDragIndicator(.visible)
                     .presentationBackground(.ultraThinMaterial)
                     .presentationCornerRadius(24)
+                    .onDisappear { viewModel.loadVisitCounts() }
             }
             .onAppear {
                 viewModel.setup(modelContext: modelContext)
@@ -80,6 +81,7 @@ struct MapView: View {
 
 struct DoenerPinView: View {
     let place: CachedPlace
+    var visitCount: Int = 0
     @State private var appeared = false
 
     var body: some View {
@@ -87,7 +89,7 @@ struct DoenerPinView: View {
             ZStack {
                 // Outer glow
                 Circle()
-                    .fill(.orange.opacity(0.3))
+                    .fill((visitCount > 0 ? Color.green : Color.orange).opacity(0.3))
                     .frame(width: 44, height: 44)
                     .blur(radius: 4)
 
@@ -97,18 +99,24 @@ struct DoenerPinView: View {
                     .frame(width: 40, height: 40)
                     .overlay {
                         Circle()
-                            .strokeBorder(.orange.gradient, lineWidth: 2)
+                            .strokeBorder(visitCount > 0 ? .green.gradient : .orange.gradient, lineWidth: 2)
                     }
                     .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
 
-                Image(systemName: "fork.knife")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(.orange)
+                if visitCount > 0 {
+                    Text("\(visitCount)")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.green)
+                } else {
+                    Image(systemName: "fork.knife")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(.orange)
+                }
             }
 
             // Pin tail
             Triangle()
-                .fill(.orange.gradient)
+                .fill((visitCount > 0 ? Color.green : Color.orange).gradient)
                 .frame(width: 12, height: 6)
                 .offset(y: -1)
         }

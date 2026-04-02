@@ -1,9 +1,15 @@
 import SwiftUI
+import SwiftData
 import MapKit
 
 struct PlaceDetailView: View {
     let place: CachedPlace
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @State private var visits: [Visit] = []
+    @State private var showCheckInConfirmation = false
+    @State private var checkInComment = ""
+    @State private var justCheckedIn = false
 
     var body: some View {
         ScrollView {
@@ -50,7 +56,7 @@ struct PlaceDetailView: View {
                 // Action buttons
                 HStack(spacing: 10) {
                     ActionButton(title: "Einchecken", icon: "checkmark.circle.fill", color: .green) {
-                        // TODO: Phase 2
+                        showCheckInConfirmation = true
                     }
 
                     ActionButton(title: "Bewerten", icon: "star.fill", color: .orange) {
@@ -63,6 +69,18 @@ struct PlaceDetailView: View {
 
                     ActionButton(title: "Route", icon: "arrow.triangle.turn.up.right.diamond.fill", color: .purple) {
                         openInMaps()
+                    }
+                }
+
+                // Visit history
+                if !visits.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Besuche (\(visits.count))")
+                            .font(.headline)
+
+                        ForEach(visits) { visit in
+                            VisitRow(visit: visit)
+                        }
                     }
                 }
 
@@ -79,12 +97,103 @@ struct PlaceDetailView: View {
             }
             .padding()
         }
+        .onAppear { loadVisits() }
+        .overlay {
+            if justCheckedIn {
+                CheckInToast()
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .alert("Einchecken", isPresented: $showCheckInConfirmation) {
+            TextField("Kommentar (optional)", text: $checkInComment)
+            Button("Einchecken") { checkIn() }
+            Button("Abbrechen", role: .cancel) { checkInComment = "" }
+        } message: {
+            Text("Bei \(place.name) einchecken?")
+        }
+    }
+
+    private func checkIn() {
+        let visit = Visit(
+            placeOsmNodeID: place.osmNodeID,
+            placeName: place.name,
+            comment: checkInComment.isEmpty ? nil : checkInComment
+        )
+        modelContext.insert(visit)
+        try? modelContext.save()
+        checkInComment = ""
+        loadVisits()
+
+        withAnimation { justCheckedIn = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            withAnimation { justCheckedIn = false }
+        }
+    }
+
+    private func loadVisits() {
+        let osmID = place.osmNodeID
+        let descriptor = FetchDescriptor<Visit>(
+            predicate: #Predicate { $0.placeOsmNodeID == osmID },
+            sortBy: [SortDescriptor(\.visitedAt, order: .reverse)]
+        )
+        visits = (try? modelContext.fetch(descriptor)) ?? []
     }
 
     private func openInMaps() {
         let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: place.coordinate))
         mapItem.name = place.name
         mapItem.openInMaps(launchOptions: [MKLaunchOptionsDirectionsModeKey: MKLaunchOptionsDirectionsModeDriving])
+    }
+}
+
+// MARK: - Visit Row
+
+struct VisitRow: View {
+    let visit: Visit
+
+    var body: some View {
+        GlassCard {
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(visit.visitedAt, format: .dateTime.day().month().year().hour().minute())
+                        .font(.subheadline.weight(.medium))
+
+                    if let comment = visit.comment {
+                        Text(comment)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+            }
+        }
+    }
+}
+
+// MARK: - Check-In Toast
+
+struct CheckInToast: View {
+    var body: some View {
+        VStack {
+            HStack(spacing: 10) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.green)
+                Text("Eingecheckt!")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(.ultraThinMaterial, in: Capsule())
+            .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+            .padding(.top, 8)
+
+            Spacer()
+        }
     }
 }
 
@@ -204,4 +313,5 @@ struct ActionButton: View {
         city: "Berlin",
         openingHours: "Mo-Su 10:00-02:00"
     ))
+    .modelContainer(for: [CachedPlace.self, Visit.self], inMemory: true)
 }

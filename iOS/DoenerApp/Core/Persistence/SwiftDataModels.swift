@@ -70,6 +70,21 @@ final class CachedRegion {
 }
 
 @Model
+final class Visit {
+    var placeOsmNodeID: Int64
+    var placeName: String
+    var visitedAt: Date
+    var comment: String?
+
+    init(placeOsmNodeID: Int64, placeName: String, visitedAt: Date = Date(), comment: String? = nil) {
+        self.placeOsmNodeID = placeOsmNodeID
+        self.placeName = placeName
+        self.visitedAt = visitedAt
+        self.comment = comment
+    }
+}
+
+@Model
 final class PendingSyncOperation {
     var entityType: String
     var entityID: String

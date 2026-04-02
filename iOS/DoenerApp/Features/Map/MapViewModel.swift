@@ -9,6 +9,7 @@ final class MapViewModel {
     var isLoading = false
     var errorMessage: String?
     var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
+    var visitCounts: [Int64: Int] = [:]
 
     private var modelContext: ModelContext?
     private var lastFetchedRegion: MKCoordinateRegion?
@@ -16,6 +17,7 @@ final class MapViewModel {
     func setup(modelContext: ModelContext) {
         self.modelContext = modelContext
         loadCachedPlaces()
+        loadVisitCounts()
     }
 
     func onRegionChanged(_ region: MKCoordinateRegion) async {
@@ -100,6 +102,18 @@ final class MapViewModel {
                 sortBy: [SortDescriptor(\.name)]
             )
             places = try modelContext.fetch(descriptor)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadVisitCounts() {
+        guard let modelContext else { return }
+        do {
+            let descriptor = FetchDescriptor<Visit>()
+            let allVisits = try modelContext.fetch(descriptor)
+            visitCounts = Dictionary(grouping: allVisits, by: \.placeOsmNodeID)
+                .mapValues(\.count)
         } catch {
             errorMessage = error.localizedDescription
         }
