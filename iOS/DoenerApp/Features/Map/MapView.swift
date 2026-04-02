@@ -8,6 +8,11 @@ struct MapView: View {
     @State private var locationManager = LocationManager()
     @State private var visibleRegion: MKCoordinateRegion?
     @State private var regionChangeID = 0
+    @State private var showFavoritesOnly = false
+
+    private var filteredPlaces: [CachedPlace] {
+        showFavoritesOnly ? viewModel.places.filter(\.isFavorite) : viewModel.places
+    }
 
     var body: some View {
         NavigationStack {
@@ -15,7 +20,7 @@ struct MapView: View {
                 Map(position: $viewModel.cameraPosition, selection: $viewModel.selectedPlace) {
                     UserAnnotation()
 
-                    ForEach(viewModel.places) { place in
+                    ForEach(filteredPlaces) { place in
                         Annotation(place.name, coordinate: place.coordinate) {
                             DoenerPinView(place: place, visitCount: viewModel.visitCounts[place.osmNodeID] ?? 0)
                         }
@@ -44,8 +49,8 @@ struct MapView: View {
 
                 // Floating info bar at top
                 VStack {
-                    if !viewModel.places.isEmpty {
-                        PlaceCountPill(count: viewModel.places.count)
+                    if !filteredPlaces.isEmpty {
+                        PlaceCountPill(count: filteredPlaces.count)
                             .padding(.top, 4)
                     }
                     Spacer()
@@ -69,6 +74,16 @@ struct MapView: View {
             .navigationTitle("Döner Karte")
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation { showFavoritesOnly.toggle() }
+                    } label: {
+                        Image(systemName: showFavoritesOnly ? "heart.fill" : "heart")
+                            .foregroundStyle(showFavoritesOnly ? .pink : .secondary)
+                    }
+                }
+            }
             .sheet(item: $viewModel.selectedPlace) { place in
                 PlaceDetailView(place: place)
                     .presentationDetents([.medium, .large])
@@ -92,7 +107,9 @@ struct DoenerPinView: View {
     var visitCount: Int = 0
     @State private var appeared = false
 
-    private var pinColor: Color { visitCount > 0 ? .green : .orange }
+    private var pinColor: Color {
+        place.isFavorite ? .pink : (visitCount > 0 ? .green : .orange)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -107,7 +124,11 @@ struct DoenerPinView: View {
                     }
                     .shadow(color: .black.opacity(0.12), radius: 3, y: 2)
 
-                if visitCount > 0 {
+                if place.isFavorite {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.pink)
+                } else if visitCount > 0 {
                     Text("\(visitCount)")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(pinColor)

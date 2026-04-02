@@ -57,7 +57,12 @@ struct PlaceDetailView: View {
                 }
 
                 // Action buttons
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    ActionButton(title: place.isFavorite ? "Favorit" : "Merken", icon: place.isFavorite ? "heart.fill" : "heart", color: .pink) {
+                        place.isFavorite.toggle()
+                        try? modelContext.save()
+                    }
+
                     ActionButton(title: "Einchecken", icon: "checkmark.circle.fill", color: .green) {
                         showCheckInConfirmation = true
                     }
