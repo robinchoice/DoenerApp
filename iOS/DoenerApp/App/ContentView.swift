@@ -16,7 +16,7 @@ struct ContentView: View {
             }
 
             Tab("Profil", systemImage: "person.crop.circle.fill") {
-                ProfilePlaceholderView()
+                ProfileView()
             }
         }
         .tint(.orange)
@@ -35,23 +35,6 @@ struct RankingsPlaceholderView: View {
                 )
             }
             .navigationTitle("Ranking")
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
-        }
-    }
-}
-
-struct ProfilePlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                GlassBackground()
-                ContentUnavailableView(
-                    "Kommt bald",
-                    systemImage: "person.crop.circle",
-                    description: Text("Dein Profil, Stempel und Erfolge erscheinen hier.")
-                )
-            }
-            .navigationTitle("Profil")
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         }
     }
