@@ -60,17 +60,39 @@ struct ProfileView: View {
     private func loadStats() {
         let visitDescriptor = FetchDescriptor<Visit>()
         let reviewDescriptor = FetchDescriptor<Review>()
+        let placeDescriptor = FetchDescriptor<CachedPlace>()
 
         let visits = (try? modelContext.fetch(visitDescriptor)) ?? []
         let reviews = (try? modelContext.fetch(reviewDescriptor)) ?? []
+        let places = (try? modelContext.fetch(placeDescriptor)) ?? []
 
         let uniqueOsmIDs = Set(visits.map(\.placeOsmNodeID))
+        let visitsByPlace = Dictionary(grouping: visits, by: \.placeOsmNodeID)
+        let maxVisits = visitsByPlace.values.map(\.count).max() ?? 0
+
+        // Check for night visits (after 22:00)
+        let calendar = Calendar.current
+        let hasNight = visits.contains { calendar.component(.hour, from: $0.visitedAt) >= 22 }
+
+        // Count unique visited places per city
+        let placesByID = Dictionary(uniqueKeysWithValues: places.compactMap { p in
+            (p.osmNodeID, p)
+        })
+        var cityCounts: [String: Int] = [:]
+        for osmID in uniqueOsmIDs {
+            if let city = placesByID[osmID]?.city, !city.isEmpty {
+                cityCounts[city, default: 0] += 1
+            }
+        }
 
         stats = ProfileStats(
             totalVisits: visits.count,
             totalReviews: reviews.count,
             uniquePlaces: uniqueOsmIDs.count,
-            memberSince: visits.map(\.visitedAt).min() ?? Date()
+            memberSince: visits.map(\.visitedAt).min() ?? Date(),
+            maxVisitsToSamePlace: maxVisits,
+            hasNightVisit: hasNight,
+            cityCounts: cityCounts
         )
     }
 }
@@ -82,6 +104,9 @@ struct ProfileStats {
     var totalReviews = 0
     var uniquePlaces = 0
     var memberSince = Date()
+    var maxVisitsToSamePlace = 0
+    var hasNightVisit = false
+    var cityCounts: [String: Int] = [:]
 
     var stampTier: StampTier {
         StampTier.tier(forStamps: totalVisits)
@@ -219,8 +244,15 @@ struct AchievementsView: View {
         var unlocked = Set<AchievementType>()
         if stats.totalVisits >= 1 { unlocked.insert(.firstBite) }
         if stats.totalReviews >= 1 { unlocked.insert(.critic) }
+        if stats.maxVisitsToSamePlace >= 5 { unlocked.insert(.regular) }
         if stats.uniquePlaces >= 10 { unlocked.insert(.explorer) }
         if stats.uniquePlaces >= 50 { unlocked.insert(.connoisseur) }
+        if (stats.cityCounts["Berlin"] ?? 0) >= 5 { unlocked.insert(.berlinTour) }
+        if (stats.cityCounts["Hamburg"] ?? 0) >= 5 { unlocked.insert(.hamburgTour) }
+        if stats.stampTier >= .silver { unlocked.insert(.stampCollectorSilver) }
+        if stats.stampTier >= .gold { unlocked.insert(.stampCollectorGold) }
+        if stats.hasNightVisit { unlocked.insert(.nightOwl) }
+        // socialButterfly: requires friend system (not yet implemented)
         return unlocked
     }
 
