@@ -1,0 +1,47 @@
+name: DoenerApp
+options:
+  bundleIdPrefix: com.doenerapp
+  deploymentTarget:
+    iOS: "18.0"
+  xcodeVersion: "16.0"
+  createIntermediateGroups: true
+  defaultConfig: Debug
+  developmentLanguage: de
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    DEVELOPMENT_TEAM: ""
+    GENERATE_INFOPLIST_FILE: YES
+
+targets:
+  DoenerApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: DoenerApp
+    settings:
+      base:
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait"
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Döner App braucht deinen Standort, um Döner-Läden in der Nähe anzuzeigen."
+        INFOPLIST_KEY_CFBundleDisplayName: "Döner App"
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        SWIFT_EMIT_LOC_STRINGS: YES
+
+  DoenerAppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: DoenerAppTests
+    dependencies:
+      - target: DoenerApp
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
