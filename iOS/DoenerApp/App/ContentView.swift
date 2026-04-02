@@ -19,7 +19,9 @@ struct ContentView: View {
                 ProfileView()
             }
         }
-        .tint(.orange)
+        .onAppear {
+            UITabBar.appearance().tintColor = UIColor.systemOrange
+        }
     }
 }
 

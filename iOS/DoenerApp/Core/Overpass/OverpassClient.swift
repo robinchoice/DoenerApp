@@ -2,7 +2,10 @@ import Foundation
 import MapKit
 
 struct OverpassClient {
-    private static let baseURL = "https://overpass-api.de/api/interpreter"
+    private static let servers = [
+        "https://overpass.kumi.systems/api/interpreter",
+        "https://overpass-api.de/api/interpreter",
+    ]
 
     struct OverpassElement: Decodable {
         let id: Int64
@@ -35,25 +38,38 @@ struct OverpassClient {
         out body;
         """
 
-        var request = URLRequest(url: URL(string: baseURL)!)
-        request.httpMethod = "POST"
-        request.httpBody = "data=\(query)".data(using: .utf8)
-        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 15
+        var lastError: Error = OverpassError.requestFailed
 
-        let (data, response) = try await URLSession.shared.data(for: request)
+        for server in servers {
+            do {
+                var request = URLRequest(url: URL(string: server)!)
+                request.httpMethod = "POST"
+                var components = URLComponents()
+                components.queryItems = [URLQueryItem(name: "data", value: query)]
+                request.httpBody = components.percentEncodedQuery?.data(using: .utf8)
+                request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+                request.timeoutInterval = 20
 
-        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-            throw OverpassError.requestFailed
+                let (data, response) = try await URLSession.shared.data(for: request)
+
+                guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                    continue
+                }
+
+                let decoded = try JSONDecoder().decode(OverpassResponse.self, from: data)
+
+                var seen = Set<Int64>()
+                return decoded.elements.filter { element in
+                    guard element.lat != nil, element.lon != nil else { return false }
+                    return seen.insert(element.id).inserted
+                }
+            } catch {
+                lastError = error
+                continue
+            }
         }
 
-        let decoded = try JSONDecoder().decode(OverpassResponse.self, from: data)
-        // Deduplicate by ID (the two queries may overlap)
-        var seen = Set<Int64>()
-        return decoded.elements.filter { element in
-            guard element.lat != nil, element.lon != nil else { return false }
-            return seen.insert(element.id).inserted
-        }
+        throw lastError
     }
 
     enum OverpassError: Error, LocalizedError {
@@ -61,7 +77,7 @@ struct OverpassClient {
 
         var errorDescription: String? {
             switch self {
-            case .requestFailed: "Failed to fetch data from Overpass API"
+            case .requestFailed: "Döner-Läden konnten nicht geladen werden. Bitte versuch es gleich nochmal."
             }
         }
     }

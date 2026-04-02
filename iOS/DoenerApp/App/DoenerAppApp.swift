@@ -3,9 +3,15 @@ import SwiftData
 
 @main
 struct DoenerAppApp: App {
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if hasCompletedOnboarding {
+                ContentView()
+            } else {
+                WelcomeView()
+            }
         }
         .modelContainer(for: [
             CachedPlace.self,

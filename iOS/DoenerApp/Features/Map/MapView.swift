@@ -22,6 +22,7 @@ struct MapView: View {
                         .tag(place)
                     }
                 }
+                .tint(.blue) // prevent inherited tint from coloring map tiles
                 .mapStyle(.standard(elevation: .realistic, pointsOfInterest: .excludingAll))
                 .mapControls {
                     MapUserLocationButton()
@@ -33,6 +34,9 @@ struct MapView: View {
                     regionChangeID += 1
                 }
                 .task(id: regionChangeID) {
+                    // Debounce: wait before fetching so rapid panning doesn't spam requests
+                    try? await Task.sleep(for: .milliseconds(500))
+                    guard !Task.isCancelled else { return }
                     if let region = visibleRegion {
                         await viewModel.onRegionChanged(region)
                     }
@@ -52,9 +56,13 @@ struct MapView: View {
                     }
 
                     if let error = viewModel.errorMessage {
-                        ErrorPill(message: error)
-                            .padding(.bottom, 80)
-                            .onTapGesture { viewModel.errorMessage = nil }
+                        ErrorPill(message: error) {
+                            viewModel.errorMessage = nil
+                            if let region = visibleRegion {
+                                Task { await viewModel.fetchPlaces(in: region) }
+                            }
+                        }
+                        .padding(.bottom, 80)
                     }
                 }
             }
@@ -84,40 +92,36 @@ struct DoenerPinView: View {
     var visitCount: Int = 0
     @State private var appeared = false
 
+    private var pinColor: Color { visitCount > 0 ? .green : .orange }
+
     var body: some View {
         VStack(spacing: 0) {
             ZStack {
-                // Outer glow
-                Circle()
-                    .fill((visitCount > 0 ? Color.green : Color.orange).opacity(0.3))
-                    .frame(width: 44, height: 44)
-                    .blur(radius: 4)
-
                 // Glass circle
                 Circle()
                     .fill(.ultraThinMaterial)
-                    .frame(width: 40, height: 40)
+                    .frame(width: 32, height: 32)
                     .overlay {
                         Circle()
-                            .strokeBorder(visitCount > 0 ? .green.gradient : .orange.gradient, lineWidth: 2)
+                            .strokeBorder(pinColor, lineWidth: 2)
                     }
-                    .shadow(color: .black.opacity(0.15), radius: 6, y: 3)
+                    .shadow(color: .black.opacity(0.12), radius: 3, y: 2)
 
                 if visitCount > 0 {
                     Text("\(visitCount)")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.green)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(pinColor)
                 } else {
                     Image(systemName: "fork.knife")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(.orange)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(pinColor)
                 }
             }
 
             // Pin tail
             Triangle()
-                .fill((visitCount > 0 ? Color.green : Color.orange).gradient)
-                .frame(width: 12, height: 6)
+                .fill(pinColor)
+                .frame(width: 10, height: 5)
                 .offset(y: -1)
         }
         .scaleEffect(appeared ? 1 : 0.5)
@@ -174,19 +178,30 @@ struct LoadingPill: View {
 
 struct ErrorPill: View {
     let message: String
+    var onRetry: (() -> Void)?
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
-            Text(message)
-                .font(.caption)
-                .lineLimit(1)
+        Button {
+            onRetry?()
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Text(message)
+                    .font(.caption)
+                    .lineLimit(1)
+                if onRetry != nil {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption.bold())
+                        .foregroundStyle(.orange)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background(.ultraThinMaterial, in: Capsule())
+            .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: Capsule())
-        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
+        .buttonStyle(.plain)
     }
 }
 

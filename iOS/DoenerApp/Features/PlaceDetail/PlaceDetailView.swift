@@ -10,6 +10,7 @@ struct PlaceDetailView: View {
     @State private var reviews: [Review] = []
     @State private var showCheckInConfirmation = false
     @State private var showReviewSheet = false
+    @State private var showNoteSheet = false
     @State private var checkInComment = ""
     @State private var justCheckedIn = false
 
@@ -65,13 +66,27 @@ struct PlaceDetailView: View {
                         showReviewSheet = true
                     }
 
-                    ActionButton(title: "Notiz", icon: "note.text", color: .blue) {
-                        // TODO: Phase 3
+                    ActionButton(title: "Notiz", icon: place.userNote != nil ? "note.text.badge.checkmark" : "note.text", color: .blue) {
+                        showNoteSheet = true
                     }
 
                     ActionButton(title: "Route", icon: "arrow.triangle.turn.up.right.diamond.fill", color: .purple) {
                         openInMaps()
                     }
+                }
+
+                // Note
+                if let note = place.userNote, !note.isEmpty {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Notiz", systemImage: "note.text")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.blue)
+                            Text(note)
+                                .font(.subheadline)
+                        }
+                    }
+                    .onTapGesture { showNoteSheet = true }
                 }
 
                 // Reviews
@@ -121,6 +136,11 @@ struct PlaceDetailView: View {
             loadReviews()
         } content: {
             ReviewSheet(place: place, existingReview: reviews.first)
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showNoteSheet) {
+            NoteSheet(place: place)
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }

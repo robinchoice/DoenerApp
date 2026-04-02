@@ -8,7 +8,7 @@ final class LocationManager: NSObject, @preconcurrency CLLocationManagerDelegate
     var userLocation: CLLocation?
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
     var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 52.52, longitude: 13.405), // Berlin default
+        center: CLLocationCoordinate2D(latitude: 47.999, longitude: 7.842), // Freiburg default
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
 

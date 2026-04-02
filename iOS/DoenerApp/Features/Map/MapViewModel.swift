@@ -8,7 +8,11 @@ final class MapViewModel {
     var selectedPlace: CachedPlace?
     var isLoading = false
     var errorMessage: String?
-    var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
+    // Freiburg fallback
+    var cameraPosition: MapCameraPosition = .userLocation(fallback: .region(MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 47.999, longitude: 7.842),
+        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    )))
     var visitCounts: [Int64: Int] = [:]
 
     private var modelContext: ModelContext?
@@ -88,6 +92,10 @@ final class MapViewModel {
             try modelContext.save()
             lastFetchedRegion = region
             loadCachedPlaces()
+        } catch is CancellationError {
+            // Ignore cancellation from region changes
+        } catch let urlError as URLError where urlError.code == .cancelled {
+            // Ignore cancelled network requests
         } catch {
             errorMessage = error.localizedDescription
         }
