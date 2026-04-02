@@ -12,7 +12,7 @@ struct ContentView: View {
             }
 
             Tab("Ranking", systemImage: "trophy.fill") {
-                RankingsPlaceholderView()
+                RankingView()
             }
 
             Tab("Profil", systemImage: "person.crop.circle.fill") {
@@ -21,23 +21,6 @@ struct ContentView: View {
         }
         .onAppear {
             UITabBar.appearance().tintColor = UIColor.systemOrange
-        }
-    }
-}
-
-struct RankingsPlaceholderView: View {
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                GlassBackground()
-                ContentUnavailableView(
-                    "Kommt bald",
-                    systemImage: "trophy",
-                    description: Text("Dein persönliches Döner-Ranking erscheint hier.")
-                )
-            }
-            .navigationTitle("Ranking")
-            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
         }
     }
 }
