@@ -23,9 +23,7 @@ targets:
       - path: DoenerApp
     entitlements:
       path: DoenerApp/DoenerApp.entitlements
-      properties:
-        com.apple.developer.applesignin:
-          - Default
+      properties: {}
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.robinchoice.doener

@@ -1,5 +1,4 @@
 import Foundation
-import AuthenticationServices
 
 @MainActor
 @Observable
@@ -30,6 +29,20 @@ final class AuthStore: NSObject {
         do {
             let body = AppleSignInRequest(identityToken: identityToken, displayName: displayName)
             let response: AuthResponse = try await api.post("auth/apple", body: body)
+            KeychainStore.saveToken(response.accessToken)
+            self.currentUser = response.user
+        } catch {
+            lastError = error.localizedDescription
+        }
+    }
+
+    func devSignIn(displayName: String) async {
+        isLoading = true
+        defer { isLoading = false }
+        lastError = nil
+        do {
+            let body = DevSignInRequest(displayName: displayName)
+            let response: AuthResponse = try await api.post("auth/dev", body: body)
             KeychainStore.saveToken(response.accessToken)
             self.currentUser = response.user
         } catch {

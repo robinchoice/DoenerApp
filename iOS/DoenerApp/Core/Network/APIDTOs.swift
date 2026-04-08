@@ -12,6 +12,10 @@ struct AppleSignInRequest: Codable, Sendable {
     let displayName: String?
 }
 
+struct DevSignInRequest: Codable, Sendable {
+    let displayName: String
+}
+
 struct AuthResponse: Codable, Sendable {
     let accessToken: String
     let refreshToken: String

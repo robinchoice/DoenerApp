@@ -1,8 +1,8 @@
 import SwiftUI
-import AuthenticationServices
 
 struct SignInView: View {
     @Environment(AuthStore.self) private var authStore
+    @State private var displayName: String = ""
     var onSuccess: () -> Void = {}
 
     var body: some View {
@@ -19,11 +19,17 @@ struct SignInView: View {
             VStack(spacing: 12) {
                 Text("Account anlegen")
                     .font(.title.bold())
-                Text("Damit du Freunde hinzufügen\nund Erfolge sammeln kannst.")
+                Text("Wähl einen Namen, damit du Freunde\nhinzufügen und Erfolge sammeln kannst.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
+
+            TextField("Dein Name", text: $displayName)
+                .textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.words)
+                .autocorrectionDisabled()
+                .padding(.horizontal)
 
             if let err = authStore.lastError {
                 Text(err)
@@ -34,13 +40,21 @@ struct SignInView: View {
 
             Spacer()
 
-            SignInWithAppleButton(.signIn) { request in
-                request.requestedScopes = [.fullName]
-            } onCompletion: { result in
-                handle(result)
+            Button {
+                Task {
+                    await authStore.devSignIn(displayName: displayName.trimmingCharacters(in: .whitespaces))
+                    if authStore.isAuthenticated { onSuccess() }
+                }
+            } label: {
+                Text(authStore.isLoading ? "Lädt…" : "Loslegen")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 54)
+                    .background(canSubmit ? Color.orange : Color.gray.opacity(0.4))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
             }
-            .signInWithAppleButtonStyle(.black)
-            .frame(height: 54)
+            .disabled(!canSubmit || authStore.isLoading)
             .padding(.horizontal)
 
             Button("Später") {
@@ -53,29 +67,8 @@ struct SignInView: View {
         .padding()
     }
 
-    private func handle(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let auth):
-            guard let credential = auth.credential as? ASAuthorizationAppleIDCredential,
-                  let tokenData = credential.identityToken,
-                  let tokenString = String(data: tokenData, encoding: .utf8) else {
-                authStore.lastError = "Apple Token nicht erhalten"
-                return
-            }
-            let displayName = [credential.fullName?.givenName, credential.fullName?.familyName]
-                .compactMap { $0 }
-                .joined(separator: " ")
-            Task {
-                await authStore.signIn(
-                    identityToken: tokenString,
-                    displayName: displayName.isEmpty ? nil : displayName
-                )
-                if authStore.isAuthenticated {
-                    onSuccess()
-                }
-            }
-        case .failure(let error):
-            authStore.lastError = error.localizedDescription
-        }
+    private var canSubmit: Bool {
+        let trimmed = displayName.trimmingCharacters(in: .whitespaces)
+        return trimmed.count >= 2 && trimmed.count <= 30
     }
 }

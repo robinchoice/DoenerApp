@@ -6,6 +6,7 @@ struct AuthController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         let auth = routes.grouped("auth")
         auth.post("apple", use: signInWithApple)
+        auth.post("dev", use: signInDev)
 
         let protected = routes.grouped(AuthMiddleware())
         protected.get("auth", "me", use: me)
@@ -38,6 +39,32 @@ struct AuthController: RouteCollection {
             refreshToken: signed, // single-token model for dev
             user: user.toDTO()
         )
+    }
+
+    // POST /auth/dev — sideload login without Apple Sign-In (Free Provisioning has no SIWA entitlement)
+    @Sendable
+    func signInDev(req: Request) async throws -> AuthResponse {
+        struct Body: Content { let displayName: String }
+        let body = try req.content.decode(Body.self)
+        let trimmed = body.displayName.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count >= 2, trimmed.count <= 30 else {
+            throw Abort(.badRequest, reason: "displayName must be 2–30 chars")
+        }
+        let pseudoAppleID = "dev:\(trimmed.lowercased())"
+
+        let user: User
+        if let existing = try await User.query(on: req.db)
+            .filter(\.$appleUserID == pseudoAppleID)
+            .first() {
+            user = existing
+        } else {
+            let displayName = try await uniqueDisplayName(base: trimmed, on: req.db)
+            user = User(appleUserID: pseudoAppleID, displayName: displayName)
+            try await user.save(on: req.db)
+        }
+
+        let signed = SessionToken.issue(for: try user.requireID(), secret: req.application.sessionSecret)
+        return AuthResponse(accessToken: signed, refreshToken: signed, user: user.toDTO())
     }
 
     // GET /auth/me

@@ -1,52 +1,18 @@
 {
   "sourceLanguage" : "de",
   "strings" : {
-    "Karte" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Map"
-          }
-        }
-      }
+    "—" : {
+
     },
-    "Feed" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Feed"
-          }
-        }
-      }
+    "%lld" : {
+
     },
-    "Ranking" : {
+    "%lld Bewertungen" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Rankings"
-          }
-        }
-      }
-    },
-    "Profil" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Profile"
-          }
-        }
-      }
-    },
-    "Döner Karte" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Döner Map"
+            "value" : "%lld reviews"
           }
         }
       }
@@ -61,12 +27,121 @@
         }
       }
     },
-    "Lade Döner-Läden…" : {
+    "%lld/%lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "🥙" : {
+
+    },
+    "1 Bewertung" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Loading Döner places…"
+            "value" : "1 review"
+          }
+        }
+      }
+    },
+    "Abbrechen" : {
+
+    },
+    "Account anlegen" : {
+
+    },
+    "Anfragen" : {
+
+    },
+    "Anmelden" : {
+
+    },
+    "Annehmen" : {
+
+    },
+    "Bearbeiten" : {
+
+    },
+    "Bei %@ einchecken?" : {
+
+    },
+    "Besuche (%lld)" : {
+
+    },
+    "Besuche und bewerte Döner-Läden, um dein persönliches Ranking zu erstellen." : {
+
+    },
+    "Bewerten" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Review"
+          }
+        }
+      }
+    },
+    "Bewertung bearbeiten" : {
+
+    },
+    "Bewertungen (%lld)" : {
+
+    },
+    "Checke bei einem Döner-Laden ein oder schreibe eine Bewertung." : {
+
+    },
+    "Damit wir dir Döner-Läden\nin deiner Nähe zeigen können." : {
+
+    },
+    "Dein Name" : {
+
+    },
+    "Dein persönliches Döner-Ranking erscheint hier." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your personal Döner rankings will appear here."
+          }
+        }
+      }
+    },
+    "Dein Profil, Stempel und Erfolge erscheinen hier." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Your profile, stamps, and achievements will appear here."
+          }
+        }
+      }
+    },
+    "Dein Standort" : {
+
+    },
+    "Deine Notiz…" : {
+
+    },
+    "Display-Name eingeben…" : {
+
+    },
+    "Döner App" : {
+
+    },
+    "Döner Karte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Döner Map"
           }
         }
       }
@@ -81,37 +156,66 @@
         }
       }
     },
-    "Bewerten" : {
+    "Eingecheckt!" : {
+
+    },
+    "Entfernen" : {
+
+    },
+    "Erfolge" : {
+
+    },
+    "Feed" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Review"
+            "value" : "Feed"
           }
         }
       }
     },
-    "Notiz" : {
+    "Finde, bewerte und sammle\ndeine liebsten Döner-Läden." : {
+
+    },
+    "Freund suchen" : {
+
+    },
+    "Freunde" : {
+
+    },
+    "Freunde (%lld)" : {
+
+    },
+    "Füge Freunde hinzu, um ihre Döner-Abenteuer hier zu sehen." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Note"
+            "value" : "Add friends to see their Döner adventures here."
           }
         }
       }
     },
-    "Route" : {
+    "Höchste Stufe erreicht!" : {
+
+    },
+    "Karte" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Navigate"
+            "value" : "Map"
           }
         }
       }
+    },
+    "Kommentar (optional)" : {
+
     },
     "Kommt bald" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -121,25 +225,34 @@
         }
       }
     },
-    "Dein persönliches Döner-Ranking erscheint hier." : {
+    "Lade Döner-Läden…" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Your personal Döner rankings will appear here."
+            "value" : "Loading Döner places…"
           }
         }
       }
     },
-    "Dein Profil, Stempel und Erfolge erscheinen hier." : {
+    "Lädt…" : {
+
+    },
+    "Loslegen" : {
+
+    },
+    "Noch %lld Besuche bis %@" : {
       "localizations" : {
-        "en" : {
+        "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Your profile, stamps, and achievements will appear here."
+            "state" : "new",
+            "value" : "Noch %1$lld Besuche bis %2$@"
           }
         }
       }
+    },
+    "Noch kein Ranking" : {
+
     },
     "Noch keine Aktivität" : {
       "localizations" : {
@@ -151,35 +264,97 @@
         }
       }
     },
-    "Füge Freunde hinzu, um ihre Döner-Abenteuer hier zu sehen." : {
+    "Noch keine Freunde" : {
+
+    },
+    "Notiz" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Add friends to see their Döner adventures here."
+            "value" : "Note"
           }
         }
       }
     },
-    "1 Bewertung" : {
+    "Notiz löschen" : {
+
+    },
+    "Ohne Standort fortfahren" : {
+
+    },
+    "Pending" : {
+
+    },
+    "Profil" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "1 review"
+            "value" : "Profile"
           }
         }
       }
     },
-    "%lld Bewertungen" : {
+    "Ranking" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%lld reviews"
+            "value" : "Rankings"
           }
         }
       }
+    },
+    "Route" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Navigate"
+          }
+        }
+      }
+    },
+    "Seit %@" : {
+
+    },
+    "So funktioniert's" : {
+
+    },
+    "Sortierung" : {
+
+    },
+    "Später" : {
+
+    },
+    "Speichern" : {
+
+    },
+    "Standort abgelehnt.\nDu kannst das später in den Einstellungen ändern.\nFreiburg wird als Standard verwendet." : {
+
+    },
+    "Standort freigeben" : {
+
+    },
+    "Standort freigegeben!" : {
+
+    },
+    "Stempelkarte" : {
+
+    },
+    "Suchen" : {
+
+    },
+    "Wähl einen Namen, damit du Freunde\nhinzufügen und Erfolge sammeln kannst." : {
+
+    },
+    "Was war gut, was nicht? (optional)" : {
+
+    },
+    "Weiter" : {
+
     }
   },
   "version" : "1.0"

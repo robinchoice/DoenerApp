@@ -50,7 +50,7 @@
 		0F7A2100BFF736ACF7DBD8E7 /* RankingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RankingView.swift; sourceTree = "<group>"; };
 		1AD2C83B943AB6D9EF906C74 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2A4D5978CFBF5A3152387898 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
-		38217611BEAAAC1D16D096B2 /* DoenerApp.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = DoenerApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		38217611BEAAAC1D16D096B2 /* DoenerApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DoenerApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4EC4689AD29FD9F5EF22BE2B /* MapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapView.swift; sourceTree = "<group>"; };
 		5126A6968EF79B62B2B7C74E /* SignInView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignInView.swift; sourceTree = "<group>"; };
 		6D3623AF491175293B4718CB /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
@@ -343,7 +343,6 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					06D53AE2BD6C7F9B9A8379E4 = {
-						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
 					BBC3E87A7FB9DE1D92564B59 = {
@@ -520,6 +519,7 @@
 				CODE_SIGN_ENTITLEMENTS = DoenerApp/DoenerApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T2F442364K;
 				INFOPLIST_FILE = DoenerApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Döner App";
 				INFOPLIST_KEY_NSAppTransportSecurity = "{NSAllowsLocalNetworking = YES;}";
@@ -632,6 +632,7 @@
 				CODE_SIGN_ENTITLEMENTS = DoenerApp/DoenerApp.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = T2F442364K;
 				INFOPLIST_FILE = DoenerApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Döner App";
 				INFOPLIST_KEY_NSAppTransportSecurity = "{NSAllowsLocalNetworking = YES;}";
