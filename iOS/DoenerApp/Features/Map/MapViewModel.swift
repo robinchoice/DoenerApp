@@ -52,19 +52,25 @@ final class MapViewModel {
             let elements = try await OverpassClient.fetchDoenerPlaces(in: region)
 
             for element in elements {
-                guard let lat = element.lat, let lon = element.lon else { continue }
+                guard let lat = element.coordinateLat, let lon = element.coordinateLon else { continue }
                 let tags = element.tags ?? [:]
                 let name = tags["name"] ?? "Döner"
 
-                // Check if place already exists
-                let osmID = element.id
+                // OSM nodes/ways/relations share an Int64 namespace but IDs can collide.
+                // Encode type into the stored ID: nodes positive, ways negative,
+                // relations negated + large offset. Cleaned up in Phase 0 (backend Shop entity).
+                let osmID: Int64
+                switch element.type {
+                case "way":      osmID = -element.id
+                case "relation": osmID = -(element.id + 1_000_000_000_000)
+                default:         osmID = element.id
+                }
                 let descriptor = FetchDescriptor<CachedPlace>(
                     predicate: #Predicate { $0.osmNodeID == osmID }
                 )
                 let existing = try modelContext.fetch(descriptor)
 
                 if let place = existing.first {
-                    // Update existing
                     place.name = name
                     place.latitude = lat
                     place.longitude = lon
@@ -74,9 +80,8 @@ final class MapViewModel {
                     place.openingHours = tags["opening_hours"]
                     place.lastSyncedAt = Date()
                 } else {
-                    // Create new
                     let place = CachedPlace(
-                        osmNodeID: element.id,
+                        osmNodeID: osmID,
                         name: name,
                         latitude: lat,
                         longitude: lon,
