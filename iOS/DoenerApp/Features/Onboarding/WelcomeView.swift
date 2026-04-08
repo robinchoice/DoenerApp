@@ -22,9 +22,15 @@ struct WelcomeView: View {
 
             // Page 3: Features
             FeaturesPage {
-                hasCompletedOnboarding = true
+                withAnimation { currentPage = 3 }
             }
             .tag(2)
+
+            // Page 4: Sign in
+            SignInView {
+                hasCompletedOnboarding = true
+            }
+            .tag(3)
         }
         .tabViewStyle(.page(indexDisplayMode: .always))
         .indexViewStyle(.page(backgroundDisplayMode: .always))
@@ -224,7 +230,7 @@ struct FeaturesPage: View {
             Button {
                 onFinish()
             } label: {
-                Text("Los geht's!")
+                Text("Weiter")
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)

@@ -104,6 +104,28 @@ final class Review {
 }
 
 @Model
+final class CachedFriendship {
+    @Attribute(.unique) var id: UUID
+    var userID: UUID
+    var displayName: String
+    var avatarURL: String?
+    var status: String   // "pending" / "accepted"
+    var direction: String // "incoming" (other → me) / "outgoing" (me → other)
+    var createdAt: Date
+
+    init(id: UUID, userID: UUID, displayName: String, avatarURL: String? = nil,
+         status: String, direction: String, createdAt: Date) {
+        self.id = id
+        self.userID = userID
+        self.displayName = displayName
+        self.avatarURL = avatarURL
+        self.status = status
+        self.direction = direction
+        self.createdAt = createdAt
+    }
+}
+
+@Model
 final class PendingSyncOperation {
     var entityType: String
     var entityID: String

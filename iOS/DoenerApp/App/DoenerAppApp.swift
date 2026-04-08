@@ -4,14 +4,19 @@ import SwiftData
 @main
 struct DoenerAppApp: App {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @State private var authStore = AuthStore()
 
     var body: some Scene {
         WindowGroup {
-            if hasCompletedOnboarding {
-                ContentView()
-            } else {
-                WelcomeView()
+            Group {
+                if hasCompletedOnboarding {
+                    ContentView()
+                } else {
+                    WelcomeView()
+                }
             }
+            .environment(authStore)
+            .task { await authStore.bootstrap() }
         }
         .modelContainer(for: [
             CachedPlace.self,
@@ -19,6 +24,7 @@ struct DoenerAppApp: App {
             Visit.self,
             Review.self,
             PendingSyncOperation.self,
+            CachedFriendship.self,
         ])
     }
 }

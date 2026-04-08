@@ -3,7 +3,10 @@ import SwiftData
 
 struct ProfileView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AuthStore.self) private var authStore
     @State private var stats = ProfileStats()
+    @State private var friendsStore = FriendsStore()
+    @State private var showingSignIn = false
 
     var body: some View {
         NavigationStack {
@@ -23,7 +26,7 @@ struct ProfileView: View {
                             }
 
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Döner-Fan")
+                                Text(authStore.currentUser?.displayName ?? "Döner-Fan")
                                     .font(.title3.bold())
 
                                 Text("Seit \(stats.memberSince, format: .dateTime.month().year())")
@@ -32,7 +35,36 @@ struct ProfileView: View {
                             }
 
                             Spacer()
+
+                            if !authStore.isAuthenticated {
+                                Button("Anmelden") { showingSignIn = true }
+                                    .buttonStyle(.borderedProminent)
+                                    .tint(.orange)
+                            }
                         }
+                    }
+
+                    // Friends row
+                    if authStore.isAuthenticated {
+                        NavigationLink {
+                            FriendsView()
+                        } label: {
+                            GlassCard {
+                                HStack {
+                                    Image(systemName: "person.2.fill")
+                                        .foregroundStyle(.orange)
+                                    Text("Freunde")
+                                        .foregroundStyle(.primary)
+                                    Spacer()
+                                    Text("\(friendsStore.acceptedCount)")
+                                        .foregroundStyle(.secondary)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
                     }
 
                     // Stats grid
@@ -46,7 +78,7 @@ struct ProfileView: View {
                     StampCardView(stats: stats)
 
                     // Achievements
-                    AchievementsView(stats: stats)
+                    AchievementsView(stats: stats, friendsCount: friendsStore.acceptedCount)
                 }
                 .padding()
             }
@@ -54,6 +86,15 @@ struct ProfileView: View {
             .navigationTitle("Profil")
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .onAppear { loadStats() }
+            .task {
+                if authStore.isAuthenticated {
+                    await friendsStore.load(into: modelContext)
+                }
+            }
+            .sheet(isPresented: $showingSignIn) {
+                SignInView { showingSignIn = false }
+                    .environment(authStore)
+            }
         }
     }
 
@@ -239,6 +280,7 @@ struct StampCardView: View {
 
 struct AchievementsView: View {
     let stats: ProfileStats
+    let friendsCount: Int
 
     private var unlockedTypes: Set<AchievementType> {
         var unlocked = Set<AchievementType>()
@@ -252,7 +294,7 @@ struct AchievementsView: View {
         if stats.stampTier >= .silver { unlocked.insert(.stampCollectorSilver) }
         if stats.stampTier >= .gold { unlocked.insert(.stampCollectorGold) }
         if stats.hasNightVisit { unlocked.insert(.nightOwl) }
-        // socialButterfly: requires friend system (not yet implemented)
+        if friendsCount >= 5 { unlocked.insert(.socialButterfly) }
         return unlocked
     }
 

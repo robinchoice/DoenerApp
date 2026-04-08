@@ -3,21 +3,27 @@ import Fluent
 import FluentPostgresDriver
 
 func configure(_ app: Application) async throws {
-    app.databases.use(
-        .postgres(configuration: .init(
-            hostname: Environment.get("DB_HOST") ?? "localhost",
-            port: Environment.get("DB_PORT").flatMap(Int.init) ?? 5432,
-            username: Environment.get("DB_USER") ?? "doener",
-            password: Environment.get("DB_PASSWORD") ?? "doener",
-            database: Environment.get("DB_NAME") ?? "doenerapp",
-            tls: .disable
-        )),
-        as: .psql
+    let host = Environment.get("DB_HOST") ?? "localhost"
+    let port = Environment.get("DB_PORT").flatMap(Int.init) ?? 5432
+    let username = Environment.get("DB_USER") ?? "doener"
+    let password = Environment.get("DB_PASSWORD") ?? "doener"
+    let database = Environment.get("DB_NAME") ?? "doenerapp"
+
+    let pgConfig = SQLPostgresConfiguration(
+        hostname: host,
+        port: port,
+        username: username,
+        password: password,
+        database: database,
+        tls: .disable
     )
+    app.databases.use(.postgres(configuration: pgConfig), as: .psql)
 
-    // Migrations
+    app.sessionSecret = Environment.get("JWT_SECRET") ?? "dev-secret-change-me"
+
     app.migrations.add(CreateDoenerPlace())
+    app.migrations.add(CreateUser())
+    app.migrations.add(CreateFriendship())
 
-    // Routes
     try routes(app)
 }

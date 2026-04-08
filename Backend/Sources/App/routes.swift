@@ -8,4 +8,6 @@ func routes(_ app: Application) throws {
     }
 
     try api.register(collection: PlaceController())
+    try api.register(collection: AuthController())
+    try api.register(collection: FriendsController())
 }
