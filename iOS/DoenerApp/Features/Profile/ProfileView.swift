@@ -16,15 +16,14 @@ struct ProfileView: View {
                     // Avatar + Name
                     GlassCard {
                         HStack(spacing: 16) {
-                            ZStack {
-                                Circle()
-                                    .fill(.orange.gradient)
-                                    .frame(width: 64, height: 64)
-
-                                Image(systemName: "person.fill")
-                                    .font(.system(size: 28))
-                                    .foregroundStyle(.white)
-                            }
+                            Image("DoenerLogo")
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 64, height: 64)
+                                .clipShape(Circle())
+                                .overlay {
+                                    Circle().strokeBorder(.orange.opacity(0.4), lineWidth: 1.5)
+                                }
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(authStore.currentUser?.displayName ?? "Döner-Fan")

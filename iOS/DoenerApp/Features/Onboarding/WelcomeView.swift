@@ -57,15 +57,19 @@ struct WelcomePage: View {
 
             ZStack {
                 Circle()
-                    .fill(.orange.opacity(0.15))
-                    .frame(width: 140, height: 140)
+                    .fill(.orange.opacity(0.08))
+                    .frame(width: 200, height: 200)
 
                 Circle()
-                    .fill(.orange.opacity(0.08))
-                    .frame(width: 180, height: 180)
+                    .fill(.orange.opacity(0.15))
+                    .frame(width: 160, height: 160)
 
-                Text("🥙")
-                    .font(.system(size: 64))
+                Image("DoenerLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 140, height: 140)
+                    .clipShape(Circle())
+                    .shadow(color: .black.opacity(0.15), radius: 10, y: 6)
             }
             .scaleEffect(appeared ? 1 : 0.6)
             .opacity(appeared ? 1 : 0)

@@ -37,6 +37,16 @@
         }
       }
     },
+    "📍 %@, %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "📍 %1$@, %2$@"
+          }
+        }
+      }
+    },
     "🥙" : {
 
     },
@@ -53,7 +63,16 @@
     "Abbrechen" : {
 
     },
+    "Account" : {
+
+    },
     "Account anlegen" : {
+
+    },
+    "Adresse oder Stadtteil (optional)" : {
+
+    },
+    "Aktuellen Standort anhängen" : {
 
     },
     "Anfragen" : {
@@ -63,6 +82,18 @@
 
     },
     "Annehmen" : {
+
+    },
+    "Anzeigename" : {
+
+    },
+    "Anzeigename speichern" : {
+
+    },
+    "Auf Default zurücksetzen" : {
+
+    },
+    "Backend-URL" : {
 
     },
     "Bearbeiten" : {
@@ -91,6 +122,9 @@
 
     },
     "Bewertungen (%lld)" : {
+
+    },
+    "Build" : {
 
     },
     "Checke bei einem Döner-Laden ein oder schreibe eine Bewertung." : {
@@ -130,6 +164,9 @@
     "Deine Notiz…" : {
 
     },
+    "Dev-Modus" : {
+
+    },
     "Display-Name eingeben…" : {
 
     },
@@ -159,10 +196,16 @@
     "Eingecheckt!" : {
 
     },
+    "Einstellungen" : {
+
+    },
     "Entfernen" : {
 
     },
     "Erfolge" : {
+
+    },
+    "Erledigt" : {
 
     },
     "Feed" : {
@@ -174,6 +217,12 @@
           }
         }
       }
+    },
+    "Fehlenden Laden melden" : {
+
+    },
+    "Fertig" : {
+
     },
     "Finde, bewerte und sammle\ndeine liebsten Döner-Läden." : {
 
@@ -198,7 +247,16 @@
         }
       }
     },
+    "Gemeldete Läden (%lld)" : {
+
+    },
+    "Hilft Robin, den Laden später zu finden." : {
+
+    },
     "Höchste Stufe erreicht!" : {
+
+    },
+    "Ja, machen" : {
 
     },
     "Karte" : {
@@ -235,10 +293,31 @@
         }
       }
     },
+    "Laden" : {
+
+    },
+    "Laden fehlt?" : {
+
+    },
     "Lädt…" : {
 
     },
+    "Leer = Default (%@). Praktisch beim WiFi-Wechsel — kein Recompile nötig." : {
+
+    },
+    "Lokal gespeichert. Robin überträgt sie später ins Backend / OSM." : {
+
+    },
     "Loslegen" : {
+
+    },
+    "Made with ❤️ und viel Knoblauchsoße." : {
+
+    },
+    "Name (z.B. Erbil)" : {
+
+    },
+    "Nicht angemeldet" : {
 
     },
     "Noch %lld Besuche bis %@" : {
@@ -277,10 +356,16 @@
         }
       }
     },
+    "Notiz (optional)" : {
+
+    },
     "Notiz löschen" : {
 
     },
     "Ohne Standort fortfahren" : {
+
+    },
+    "OK" : {
 
     },
     "Pending" : {
@@ -306,6 +391,9 @@
         }
       }
     },
+    "Reset-Funktionen für Tester. Keine Aktion ist umkehrbar." : {
+
+    },
     "Route" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -320,6 +408,9 @@
     "Seit %@" : {
 
     },
+    "Senden" : {
+
+    },
     "So funktioniert's" : {
 
     },
@@ -332,43 +423,19 @@
     "Speichern" : {
 
     },
-    "Standort abgelehnt.\nDu kannst das später in den Einstellungen ändern.\nFreiburg wird als Standard verwendet." : {
-
-    },
-    "Standort freigeben" : {
-
-    },
-    "Standort freigegeben!" : {
-
-    },
-    "Stempelkarte" : {
-
-    },
-    "Suchen" : {
-
-    },
-    "Wähl einen Namen, damit du Freunde\nhinzufügen und Erfolge sammeln kannst." : {
-
-    },
-    "Was war gut, was nicht? (optional)" : {
-
-    },
-    "Weiter" : {
-
-    },
-    "stamp_tier.doenerneuling" : {
+    "stamp_tier.doenerfan" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dönerneuling"
+            "value" : "Dönerfan"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Döner Newbie"
+            "value" : "Döner Fan"
           }
         }
       }
@@ -390,36 +457,19 @@
         }
       }
     },
-    "stamp_tier.doenerfan" : {
+    "stamp_tier.doenerlegende" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dönerfan"
+            "value" : "Dönerlegende"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Döner Fan"
-          }
-        }
-      }
-    },
-    "stamp_tier.doenerprofi" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dönerprofi"
-          }
-        },
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Döner Pro"
+            "value" : "Döner Legend"
           }
         }
       }
@@ -441,22 +491,78 @@
         }
       }
     },
-    "stamp_tier.doenerlegende" : {
+    "stamp_tier.doenerneuling" : {
       "extractionState" : "manual",
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dönerlegende"
+            "value" : "Dönerneuling"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Döner Legend"
+            "value" : "Döner Newbie"
           }
         }
       }
+    },
+    "stamp_tier.doenerprofi" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dönerprofi"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Döner Pro"
+          }
+        }
+      }
+    },
+    "Standort abgelehnt.\nDu kannst das später in den Einstellungen ändern.\nFreiburg wird als Standard verwendet." : {
+
+    },
+    "Standort freigeben" : {
+
+    },
+    "Standort freigegeben!" : {
+
+    },
+    "Stempelkarte" : {
+
+    },
+    "Suchen" : {
+
+    },
+    "Über" : {
+
+    },
+    "Version" : {
+
+    },
+    "Verstanden" : {
+
+    },
+    "Wähl einen Namen, damit du Freunde\nhinzufügen und Erfolge sammeln kannst." : {
+
+    },
+    "Was ist besonders? Special-Soße, Falafel-Rezept, etc." : {
+
+    },
+    "Was ist Einchecken?" : {
+
+    },
+    "Was war gut, was nicht? (optional)" : {
+
+    },
+    "Weiter" : {
+
     }
   },
   "version" : "1.0"
