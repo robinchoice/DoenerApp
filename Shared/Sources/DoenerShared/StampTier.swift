@@ -1,26 +1,32 @@
 import Foundation
 
 public enum StampTier: String, Codable, Sendable, CaseIterable, Comparable {
-    case bronze
-    case silver
-    case gold
-    case platinum
+    case doenerneuling
+    case doenerfreund
+    case doenerfan
+    case doenerprofi
+    case doenermeister
+    case doenerlegende
 
     public var stampsRequired: Int {
         switch self {
-        case .bronze: 0
-        case .silver: 10
-        case .gold: 25
-        case .platinum: 50
+        case .doenerneuling: 0
+        case .doenerfreund: 5
+        case .doenerfan: 15
+        case .doenerprofi: 30
+        case .doenermeister: 60
+        case .doenerlegende: 100
         }
     }
 
     public var nextTier: StampTier? {
         switch self {
-        case .bronze: .silver
-        case .silver: .gold
-        case .gold: .platinum
-        case .platinum: nil
+        case .doenerneuling: .doenerfreund
+        case .doenerfreund: .doenerfan
+        case .doenerfan: .doenerprofi
+        case .doenerprofi: .doenermeister
+        case .doenermeister: .doenerlegende
+        case .doenerlegende: nil
         }
     }
 
@@ -29,10 +35,11 @@ public enum StampTier: String, Codable, Sendable, CaseIterable, Comparable {
     }
 
     public static func tier(forStamps count: Int) -> StampTier {
-        if count >= StampTier.platinum.stampsRequired { return .platinum }
-        if count >= StampTier.gold.stampsRequired { return .gold }
-        if count >= StampTier.silver.stampsRequired { return .silver }
-        return .bronze
+        // Walk tiers from highest to lowest and return the first one we qualify for.
+        for tier in StampTier.allCases.reversed() {
+            if count >= tier.stampsRequired { return tier }
+        }
+        return .doenerneuling
     }
 
     public static func < (lhs: StampTier, rhs: StampTier) -> Bool {

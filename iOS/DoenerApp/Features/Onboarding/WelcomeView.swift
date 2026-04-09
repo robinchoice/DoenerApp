@@ -220,7 +220,8 @@ struct FeaturesPage: View {
 
             VStack(alignment: .leading, spacing: 20) {
                 FeatureRow(icon: "map.fill", color: .orange, title: "Entdecken", description: "Finde Döner-Läden in deiner Umgebung")
-                FeatureRow(icon: "star.fill", color: .yellow, title: "Bewerten", description: "Bewerte und teile deine Erfahrungen")
+                FeatureRow(icon: "checkmark.circle.fill", color: .green, title: "Einchecken", description: "Markiere jeden Besuch — er zählt für deine Stempelkarte und erscheint im Feed")
+                FeatureRow(icon: "fork.knife.circle.fill", color: .orange, title: "Bewerten", description: "Bewerte und teile deine Erfahrungen")
                 FeatureRow(icon: "seal.fill", color: .purple, title: "Sammeln", description: "Sammle Stempel und schalte Erfolge frei")
             }
             .padding(.horizontal, 8)

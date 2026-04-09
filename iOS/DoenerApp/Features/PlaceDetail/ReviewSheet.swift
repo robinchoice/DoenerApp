@@ -16,14 +16,9 @@ struct ReviewSheet: View {
                     .font(.headline)
                     .foregroundStyle(.secondary)
 
-                // Star rating
-                HStack(spacing: 12) {
-                    ForEach(1...5, id: \.self) { star in
-                        Image(systemName: star <= rating ? "star.fill" : "star")
-                            .font(.system(size: 36))
-                            .foregroundStyle(star <= rating ? .orange : .gray.opacity(0.3))
-                            .onTapGesture { withAnimation(.spring(response: 0.2)) { rating = star } }
-                    }
+                // Döner rating
+                DoenerRatingView(value: rating, size: 40, interactive: true) { newValue in
+                    rating = newValue
                 }
                 .padding(.vertical, 8)
 

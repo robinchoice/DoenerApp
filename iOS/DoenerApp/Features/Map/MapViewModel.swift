@@ -17,6 +17,11 @@ final class MapViewModel {
 
     private var modelContext: ModelContext?
     private var lastFetchedRegion: MKCoordinateRegion?
+    private var activeFetchTask: Task<Void, Never>?
+
+    /// Skip Overpass entirely above this span — query would time out and the
+    /// result would be useless dot-soup anyway.
+    private let maxFetchableSpan: Double = 0.6
 
     func setup(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -25,10 +30,21 @@ final class MapViewModel {
     }
 
     func onRegionChanged(_ region: MKCoordinateRegion) async {
-        guard !isLoading else { return }
+        // Skip absurdly large spans — Overpass times out, user gets nothing useful.
+        guard region.span.latitudeDelta < maxFetchableSpan,
+              region.span.longitudeDelta < maxFetchableSpan else {
+            return
+        }
         guard shouldFetch(for: region) else { return }
 
-        await fetchPlaces(in: region)
+        // Cancel any in-flight fetch — the user has moved on.
+        activeFetchTask?.cancel()
+        let task = Task<Void, Never> { [weak self] in
+            guard let self else { return }
+            await self.fetchPlaces(in: region)
+        }
+        activeFetchTask = task
+        await task.value
     }
 
     private func shouldFetch(for region: MKCoordinateRegion) -> Bool {

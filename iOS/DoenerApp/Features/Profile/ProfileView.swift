@@ -7,6 +7,7 @@ struct ProfileView: View {
     @State private var stats = ProfileStats()
     @State private var friendsStore = FriendsStore()
     @State private var showingSignIn = false
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
@@ -85,6 +86,19 @@ struct ProfileView: View {
             .background { GlassBackground() }
             .navigationTitle("Profil")
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showingSettings = true
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingSettings) {
+                SettingsView()
+                    .environment(authStore)
+            }
             .onAppear { loadStats() }
             .task {
                 if authStore.isAuthenticated {
@@ -208,7 +222,7 @@ struct StampCardView: View {
 
                     Spacer()
 
-                    Text(stats.stampTier.rawValue.capitalized)
+                    Text(stats.stampTier.displayName)
                         .font(.subheadline.bold())
                         .foregroundStyle(tierColor)
                         .padding(.horizontal, 10)
@@ -232,7 +246,7 @@ struct StampCardView: View {
                     .frame(height: 8)
 
                     if let remaining = stats.stampsToNext {
-                        Text("Noch \(remaining) Besuche bis \(stats.stampTier.nextTier!.rawValue.capitalized)")
+                        Text("Noch \(remaining) Besuche bis \(stats.stampTier.nextTier!.displayName)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
@@ -267,12 +281,7 @@ struct StampCardView: View {
     }
 
     private var tierColor: Color {
-        switch stats.stampTier {
-        case .bronze: .brown
-        case .silver: .gray
-        case .gold: .orange
-        case .platinum: .purple
-        }
+        stats.stampTier.color
     }
 }
 
@@ -291,8 +300,9 @@ struct AchievementsView: View {
         if stats.uniquePlaces >= 50 { unlocked.insert(.connoisseur) }
         if (stats.cityCounts["Berlin"] ?? 0) >= 5 { unlocked.insert(.berlinTour) }
         if (stats.cityCounts["Hamburg"] ?? 0) >= 5 { unlocked.insert(.hamburgTour) }
-        if stats.stampTier >= .silver { unlocked.insert(.stampCollectorSilver) }
-        if stats.stampTier >= .gold { unlocked.insert(.stampCollectorGold) }
+        // Tier mapping: Silver-Achievement bei Dönerfan (15 Stempel), Gold bei Dönermeister (60).
+        if stats.stampTier >= .doenerfan { unlocked.insert(.stampCollectorSilver) }
+        if stats.stampTier >= .doenermeister { unlocked.insert(.stampCollectorGold) }
         if stats.hasNightVisit { unlocked.insert(.nightOwl) }
         if friendsCount >= 5 { unlocked.insert(.socialButterfly) }
         return unlocked

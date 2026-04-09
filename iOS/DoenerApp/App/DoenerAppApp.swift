@@ -25,6 +25,7 @@ struct DoenerAppApp: App {
             Review.self,
             PendingSyncOperation.self,
             CachedFriendship.self,
+            MissingShopReport.self,
         ])
     }
 }

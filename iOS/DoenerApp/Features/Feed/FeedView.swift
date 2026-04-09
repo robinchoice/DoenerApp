@@ -124,15 +124,9 @@ struct FeedCard: View {
                         .foregroundStyle(.tertiary)
                 }
 
-                // Rating stars
+                // Rating
                 if let rating = item.rating {
-                    HStack(spacing: 2) {
-                        ForEach(1...5, id: \.self) { star in
-                            Image(systemName: star <= rating ? "star.fill" : "star")
-                                .font(.caption)
-                                .foregroundStyle(star <= rating ? .orange : .gray.opacity(0.3))
-                        }
-                    }
+                    DoenerRatingView(value: rating, size: 14)
                 }
 
                 // Comment
@@ -148,7 +142,7 @@ struct FeedCard: View {
     private var iconName: String {
         switch item.type {
         case .visit: "checkmark.circle.fill"
-        case .review: "star.fill"
+        case .review: "fork.knife.circle.fill"
         }
     }
 

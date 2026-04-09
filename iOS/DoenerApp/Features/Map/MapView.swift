@@ -9,6 +9,7 @@ struct MapView: View {
     @State private var visibleRegion: MKCoordinateRegion?
     @State private var regionChangeID = 0
     @State private var showFavoritesOnly = false
+    @State private var showReportSheet = false
 
     private var filteredPlaces: [CachedPlace] {
         showFavoritesOnly ? viewModel.places.filter(\.isFavorite) : viewModel.places
@@ -75,6 +76,14 @@ struct MapView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showReportSheet = true
+                    } label: {
+                        Image(systemName: "plus.circle")
+                    }
+                    .accessibilityLabel("Fehlenden Laden melden")
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         withAnimation { showFavoritesOnly.toggle() }
@@ -83,6 +92,11 @@ struct MapView: View {
                             .foregroundStyle(showFavoritesOnly ? .pink : .secondary)
                     }
                 }
+            }
+            .sheet(isPresented: $showReportSheet) {
+                ReportShopSheet(prefilledCoordinate: visibleRegion?.center)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
             .sheet(item: $viewModel.selectedPlace) { place in
                 PlaceDetailView(place: place)

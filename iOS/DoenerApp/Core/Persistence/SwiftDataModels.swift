@@ -126,6 +126,26 @@ final class CachedFriendship {
 }
 
 @Model
+final class MissingShopReport {
+    var name: String
+    var addressOrHint: String?
+    var latitude: Double?
+    var longitude: Double?
+    var note: String?
+    var createdAt: Date
+
+    init(name: String, addressOrHint: String? = nil, latitude: Double? = nil,
+         longitude: Double? = nil, note: String? = nil) {
+        self.name = name
+        self.addressOrHint = addressOrHint
+        self.latitude = latitude
+        self.longitude = longitude
+        self.note = note
+        self.createdAt = Date()
+    }
+}
+
+@Model
 final class PendingSyncOperation {
     var entityType: String
     var entityID: String

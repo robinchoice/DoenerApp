@@ -144,7 +144,7 @@ struct RankingRow: View {
                         }
 
                         if let rating = ranked.avgRating {
-                            Label(String(format: "%.1f", rating), systemImage: "star.fill")
+                            Label(String(format: "%.1f", rating), systemImage: "fork.knife.circle.fill")
                                 .font(.caption)
                                 .foregroundStyle(.orange)
                         }

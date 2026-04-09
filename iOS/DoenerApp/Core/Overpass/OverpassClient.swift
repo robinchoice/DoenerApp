@@ -43,11 +43,13 @@ struct OverpassClient {
 
         // nwr = node + way + relation: many shops are tagged as building polygons (ways),
         // not nodes. `out center` gives ways/relations a centroid we can pin on the map.
+        // Cuisine + name regex are deliberately wide — many döner shops in OSM are tagged
+        // as turkish/arab/lebanese without the explicit kebab tag, or only via name.
         let query = """
-        [out:json][timeout:15];
+        [out:json][timeout:25];
         (
-          nwr["cuisine"~"kebab|döner|doner|kebap",i]["amenity"~"restaurant|fast_food"](\(bbox));
-          nwr["name"~"[Dd](ö|oe)ner|[Kk]ebab|[Kk]ebap",i]["amenity"~"restaurant|fast_food"](\(bbox));
+          nwr["cuisine"~"kebab|döner|doner|kebap|turkish|arab|lebanese|syrian|mediterranean|falafel|shawarma",i]["amenity"~"restaurant|fast_food"](\(bbox));
+          nwr["name"~"[Dd](ö|oe)ner|[Kk]eba[bp]|[Dd]ürüm|[Ss]hawarma|[Ff]alafel|[Yy]ufka|[Ll]ahmacun|[Ii]mbiss",i]["amenity"~"restaurant|fast_food"](\(bbox));
         );
         out center tags;
         """
