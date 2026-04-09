@@ -96,6 +96,26 @@ struct ReviewSheet: View {
 
         updatePlaceRating()
         try? modelContext.save()
+
+        // Fire-and-forget backend sync. Skips silently if not authenticated.
+        let osmID = place.osmNodeID
+        let placeName = place.name
+        let lat = place.latitude
+        let lon = place.longitude
+        let addr = place.address
+        let postal = place.postalCode
+        let city = place.city
+        let hours = place.openingHours
+        let ratingValue = rating
+        let textValue = text.isEmpty ? nil : text
+        Task.detached {
+            await ReviewSyncService.push(
+                osmNodeID: osmID, name: placeName, latitude: lat, longitude: lon,
+                address: addr, postalCode: postal, city: city, openingHours: hours,
+                rating: ratingValue, text: textValue
+            )
+        }
+
         dismiss()
     }
 

@@ -183,13 +183,33 @@ struct PlaceDetailView: View {
     }
 
     private func checkIn() {
+        let comment = checkInComment.isEmpty ? nil : checkInComment
         let visit = Visit(
             placeOsmNodeID: place.osmNodeID,
             placeName: place.name,
-            comment: checkInComment.isEmpty ? nil : checkInComment
+            comment: comment
         )
         modelContext.insert(visit)
         try? modelContext.save()
+
+        // Fire-and-forget backend sync.
+        let osmID = place.osmNodeID
+        let placeName = place.name
+        let lat = place.latitude
+        let lon = place.longitude
+        let addr = place.address
+        let postal = place.postalCode
+        let city = place.city
+        let hours = place.openingHours
+        let visitedAt = visit.visitedAt
+        Task.detached {
+            await VisitSyncService.push(
+                osmNodeID: osmID, name: placeName, latitude: lat, longitude: lon,
+                address: addr, postalCode: postal, city: city, openingHours: hours,
+                visitedAt: visitedAt, comment: comment
+            )
+        }
+
         checkInComment = ""
         loadVisits()
 

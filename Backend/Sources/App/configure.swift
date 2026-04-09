@@ -24,6 +24,8 @@ func configure(_ app: Application) async throws {
     app.migrations.add(CreateDoenerPlace())
     app.migrations.add(CreateUser())
     app.migrations.add(CreateFriendship())
+    app.migrations.add(CreateReview())
+    app.migrations.add(CreateVisit())
 
     try routes(app)
 }

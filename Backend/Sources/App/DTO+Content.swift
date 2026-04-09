@@ -6,3 +6,5 @@ extension PlaceDTO: @retroactive Content {}
 extension FriendshipDTO: @retroactive Content {}
 extension AuthResponse: @retroactive Content {}
 extension AppleSignInRequest: @retroactive Content {}
+extension ReviewDTO: @retroactive Content {}
+extension VisitDTO: @retroactive Content {}
