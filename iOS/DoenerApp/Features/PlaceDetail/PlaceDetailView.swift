@@ -13,7 +13,6 @@ struct PlaceDetailView: View {
     @State private var showNoteSheet = false
     @State private var checkInComment = ""
     @State private var justCheckedIn = false
-    @State private var showCheckInExplanation = false
     @State private var summaryText: String?
 
     var body: some View {
@@ -76,18 +75,6 @@ struct PlaceDetailView: View {
 
                     ActionButton(title: "Einchecken", icon: "checkmark.circle.fill", color: .green) {
                         showCheckInConfirmation = true
-                    }
-                    .overlay(alignment: .topTrailing) {
-                        Button {
-                            showCheckInExplanation = true
-                        } label: {
-                            Image(systemName: "questionmark.circle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.green)
-                                .background(Circle().fill(.background))
-                        }
-                        .offset(x: 6, y: -2)
-                        .accessibilityLabel("Was ist Einchecken?")
                     }
 
                     ActionButton(title: "Bewerten", icon: "fork.knife.circle.fill", color: .orange) {
@@ -192,11 +179,6 @@ struct PlaceDetailView: View {
                 CheckInToast()
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
-        }
-        .sheet(isPresented: $showCheckInExplanation) {
-            CheckInExplanationSheet()
-                .presentationDetents([.medium])
-                .presentationDragIndicator(.visible)
         }
         .alert("Einchecken", isPresented: $showCheckInConfirmation) {
             TextField("Kommentar (optional)", text: $checkInComment)
@@ -375,67 +357,6 @@ struct VisitRow: View {
 
                 Spacer()
             }
-        }
-    }
-}
-
-// MARK: - Check-In Explanation
-
-struct CheckInExplanationSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(spacing: 20) {
-            ZStack {
-                Circle()
-                    .fill(.green.opacity(0.15))
-                    .frame(width: 100, height: 100)
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 48))
-                    .foregroundStyle(.green)
-            }
-            .padding(.top, 30)
-
-            Text("Was ist Einchecken?")
-                .font(.title2.bold())
-
-            VStack(alignment: .leading, spacing: 14) {
-                ExplanationRow(icon: "seal.fill", color: .purple,
-                               text: "Jeder Check-in zählt einen Stempel auf deiner Stempelkarte.")
-                ExplanationRow(icon: "person.2.fill", color: .blue,
-                               text: "Dein Besuch erscheint im Feed — auch deine Freunde sehen wo du isst.")
-                ExplanationRow(icon: "trophy.fill", color: .orange,
-                               text: "Achievements werden freigeschaltet, wenn du oft genug eincheckst.")
-            }
-            .padding(.horizontal, 24)
-
-            Spacer()
-
-            Button("Verstanden") { dismiss() }
-                .font(.headline)
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(.green.gradient, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .padding(.horizontal, 24)
-                .padding(.bottom, 24)
-        }
-    }
-}
-
-private struct ExplanationRow: View {
-    let icon: String
-    let color: Color
-    let text: String
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon)
-                .font(.title3)
-                .foregroundStyle(color)
-                .frame(width: 28)
-            Text(text)
-                .font(.subheadline)
         }
     }
 }

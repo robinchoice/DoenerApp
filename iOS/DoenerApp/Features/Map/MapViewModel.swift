@@ -21,7 +21,7 @@ final class MapViewModel {
 
     /// Skip Overpass entirely above this span — query would time out and the
     /// result would be useless dot-soup anyway.
-    private let maxFetchableSpan: Double = 0.6
+    private let maxFetchableSpan: Double = 0.3
 
     func setup(modelContext: ModelContext) {
         self.modelContext = modelContext
