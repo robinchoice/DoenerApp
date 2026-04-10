@@ -14,6 +14,7 @@ struct PlaceDetailView: View {
     @State private var checkInComment = ""
     @State private var justCheckedIn = false
     @State private var showCheckInExplanation = false
+    @State private var summaryText: String?
 
     var body: some View {
         ScrollView {
@@ -35,6 +36,15 @@ struct PlaceDetailView: View {
                                 Text([place.postalCode, city].compactMap { $0 }.joined(separator: " "))
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
+                            }
+
+                            if let special = place.specialNote, !special.isEmpty {
+                                Text(special)
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.orange)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 3)
+                                    .background(.orange.opacity(0.12), in: Capsule())
                             }
                         }
 
@@ -107,6 +117,20 @@ struct PlaceDetailView: View {
                     .onTapGesture { showNoteSheet = true }
                 }
 
+                // Community Summary
+                if let summary = summaryText {
+                    GlassCard {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Community", systemImage: "person.3.fill")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.orange)
+                            Text(summary)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 // Reviews
                 if !reviews.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
@@ -149,12 +173,13 @@ struct PlaceDetailView: View {
         .onAppear {
             loadVisits()
             loadReviews()
+            Task { await loadSummary() }
         }
         .sheet(isPresented: $showReviewSheet) {
             loadReviews()
         } content: {
             ReviewSheet(place: place, existingReview: reviews.first)
-                .presentationDetents([.medium])
+                .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showNoteSheet) {
@@ -237,6 +262,23 @@ struct PlaceDetailView: View {
         reviews = (try? modelContext.fetch(descriptor)) ?? []
     }
 
+    private func loadSummary() async {
+        struct SummaryResponse: Decodable {
+            let reviewCount: Int
+            let summaryText: String
+        }
+        do {
+            let response: SummaryResponse = try await APIClient.shared.get(
+                "places/by_osm/\(place.osmNodeID)/summary"
+            )
+            if response.reviewCount > 0 {
+                summaryText = response.summaryText
+            }
+        } catch {
+            // Summary is best-effort
+        }
+    }
+
     private func openInMaps() {
         let mapItem = MKMapItem(placemark: MKPlacemark(coordinate: place.coordinate))
         mapItem.name = place.name
@@ -249,6 +291,10 @@ struct PlaceDetailView: View {
 struct ReviewRow: View {
     let review: Review
     let onEdit: () -> Void
+
+    private var hasDimensions: Bool {
+        review.sauceRating != nil || review.fleischRating != nil || review.brotRating != nil
+    }
 
     var body: some View {
         GlassCard {
@@ -264,6 +310,20 @@ struct ReviewRow: View {
                         .labelStyle(.iconOnly)
                 }
 
+                if hasDimensions {
+                    HStack(spacing: 12) {
+                        if let sauce = review.sauceRating {
+                            DimensionChip(label: "Soße", value: sauce)
+                        }
+                        if let fleisch = review.fleischRating {
+                            DimensionChip(label: "Fleisch", value: fleisch)
+                        }
+                        if let brot = review.brotRating {
+                            DimensionChip(label: "Brot", value: brot)
+                        }
+                    }
+                }
+
                 if let text = review.text {
                     Text(text)
                         .font(.subheadline)
@@ -273,6 +333,20 @@ struct ReviewRow: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+}
+
+struct DimensionChip: View {
+    let label: String
+    let value: Int
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            DoenerRatingView(value: value, size: 10)
         }
     }
 }

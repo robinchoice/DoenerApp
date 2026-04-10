@@ -5,7 +5,11 @@ import Foundation
 enum ReviewSyncService {
     struct UpsertReviewBody: Encodable {
         let rating: Int
+        let sauceRating: Int?
+        let fleischRating: Int?
+        let brotRating: Int?
         let text: String?
+        let specialNote: String?
         let name: String
         let latitude: Double
         let longitude: Double
@@ -29,11 +33,19 @@ enum ReviewSyncService {
         city: String?,
         openingHours: String?,
         rating: Int,
-        text: String?
+        sauceRating: Int?,
+        fleischRating: Int?,
+        brotRating: Int?,
+        text: String?,
+        specialNote: String?
     ) async {
         let body = UpsertReviewBody(
             rating: rating,
+            sauceRating: sauceRating,
+            fleischRating: fleischRating,
+            brotRating: brotRating,
             text: text,
+            specialNote: specialNote,
             name: name,
             latitude: latitude,
             longitude: longitude,

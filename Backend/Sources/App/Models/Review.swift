@@ -16,6 +16,15 @@ final class Review: Model, Content, @unchecked Sendable {
     @Field(key: "rating")
     var rating: Int
 
+    @OptionalField(key: "sauce_rating")
+    var sauceRating: Int?
+
+    @OptionalField(key: "fleisch_rating")
+    var fleischRating: Int?
+
+    @OptionalField(key: "brot_rating")
+    var brotRating: Int?
+
     @OptionalField(key: "text")
     var text: String?
 
@@ -27,11 +36,16 @@ final class Review: Model, Content, @unchecked Sendable {
 
     init() {}
 
-    init(id: UUID? = nil, userID: UUID, placeID: UUID, rating: Int, text: String? = nil) {
+    init(id: UUID? = nil, userID: UUID, placeID: UUID, rating: Int,
+         sauceRating: Int? = nil, fleischRating: Int? = nil, brotRating: Int? = nil,
+         text: String? = nil) {
         self.id = id
         self.$user.id = userID
         self.$place.id = placeID
         self.rating = rating
+        self.sauceRating = sauceRating
+        self.fleischRating = fleischRating
+        self.brotRating = brotRating
         self.text = text
     }
 }

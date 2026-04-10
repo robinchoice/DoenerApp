@@ -55,7 +55,8 @@ extension DoenerPlace {
             city: city,
             openingHours: openingHours,
             avgRating: avgRating,
-            reviewCount: reviewCount
+            reviewCount: reviewCount,
+            specialNote: specialNote
         )
     }
 }

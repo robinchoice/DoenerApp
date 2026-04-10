@@ -62,10 +62,11 @@ public struct PlaceDTO: Codable, Sendable, Identifiable {
     public let openingHours: String?
     public let avgRating: Double?
     public let reviewCount: Int
+    public let specialNote: String?
 
     public init(id: UUID, osmNodeID: Int64, name: String, latitude: Double, longitude: Double,
                 address: String?, postalCode: String?, city: String?, openingHours: String?,
-                avgRating: Double?, reviewCount: Int) {
+                avgRating: Double?, reviewCount: Int, specialNote: String? = nil) {
         self.id = id
         self.osmNodeID = osmNodeID
         self.name = name
@@ -77,6 +78,7 @@ public struct PlaceDTO: Codable, Sendable, Identifiable {
         self.openingHours = openingHours
         self.avgRating = avgRating
         self.reviewCount = reviewCount
+        self.specialNote = specialNote
     }
 }
 
@@ -88,18 +90,25 @@ public struct ReviewDTO: Codable, Sendable, Identifiable {
     public let userName: String
     public let placeID: UUID
     public let rating: Int
+    public let sauceRating: Int?
+    public let fleischRating: Int?
+    public let brotRating: Int?
     public let text: String?
     public let imageURLs: [String]
     public let createdAt: Date
     public let updatedAt: Date
 
     public init(id: UUID, userID: UUID, userName: String, placeID: UUID, rating: Int,
+                sauceRating: Int? = nil, fleischRating: Int? = nil, brotRating: Int? = nil,
                 text: String?, imageURLs: [String], createdAt: Date, updatedAt: Date) {
         self.id = id
         self.userID = userID
         self.userName = userName
         self.placeID = placeID
         self.rating = rating
+        self.sauceRating = sauceRating
+        self.fleischRating = fleischRating
+        self.brotRating = brotRating
         self.text = text
         self.imageURLs = imageURLs
         self.createdAt = createdAt
@@ -109,11 +118,42 @@ public struct ReviewDTO: Codable, Sendable, Identifiable {
 
 public struct CreateReviewRequest: Codable, Sendable {
     public let rating: Int
+    public let sauceRating: Int?
+    public let fleischRating: Int?
+    public let brotRating: Int?
     public let text: String?
 
-    public init(rating: Int, text: String?) {
+    public init(rating: Int, sauceRating: Int? = nil, fleischRating: Int? = nil,
+                brotRating: Int? = nil, text: String?) {
         self.rating = rating
+        self.sauceRating = sauceRating
+        self.fleischRating = fleischRating
+        self.brotRating = brotRating
         self.text = text
+    }
+}
+
+// MARK: - Place Summary
+
+public struct PlaceSummaryDTO: Codable, Sendable {
+    public let reviewCount: Int
+    public let avgRating: Double?
+    public let avgSauceRating: Double?
+    public let avgFleischRating: Double?
+    public let avgBrotRating: Double?
+    public let topDimension: String?
+    public let summaryText: String
+
+    public init(reviewCount: Int, avgRating: Double?, avgSauceRating: Double?,
+                avgFleischRating: Double?, avgBrotRating: Double?,
+                topDimension: String?, summaryText: String) {
+        self.reviewCount = reviewCount
+        self.avgRating = avgRating
+        self.avgSauceRating = avgSauceRating
+        self.avgFleischRating = avgFleischRating
+        self.avgBrotRating = avgBrotRating
+        self.topDimension = topDimension
+        self.summaryText = summaryText
     }
 }
 

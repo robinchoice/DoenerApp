@@ -8,3 +8,4 @@ extension AuthResponse: @retroactive Content {}
 extension AppleSignInRequest: @retroactive Content {}
 extension ReviewDTO: @retroactive Content {}
 extension VisitDTO: @retroactive Content {}
+extension PlaceSummaryDTO: @retroactive Content {}

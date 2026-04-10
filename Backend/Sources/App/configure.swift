@@ -26,6 +26,7 @@ func configure(_ app: Application) async throws {
     app.migrations.add(CreateFriendship())
     app.migrations.add(CreateReview())
     app.migrations.add(CreateVisit())
+    app.migrations.add(AddDimensionRatings())
 
     try routes(app)
 }

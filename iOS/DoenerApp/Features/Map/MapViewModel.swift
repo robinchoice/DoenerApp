@@ -113,6 +113,9 @@ final class MapViewModel {
             try modelContext.save()
             lastFetchedRegion = region
             loadCachedPlaces()
+
+            // Overlay backend community data (ratings, specialNote) onto cached places
+            await mergeBackendPlaces(region: region, modelContext: modelContext)
         } catch is CancellationError {
             // Ignore cancellation from region changes
         } catch let urlError as URLError where urlError.code == .cancelled {
@@ -133,6 +136,43 @@ final class MapViewModel {
             places = try modelContext.fetch(descriptor)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Backend Overlay
+
+    private struct BackendPlace: Decodable {
+        let osmNodeID: Int64
+        let avgRating: Double?
+        let reviewCount: Int
+        let specialNote: String?
+    }
+
+    private func mergeBackendPlaces(region: MKCoordinateRegion, modelContext: ModelContext) async {
+        let lat = String(region.center.latitude)
+        let lon = String(region.center.longitude)
+        // Radius in meters — approximate from span (1° lat ≈ 111km)
+        let radiusM = String(Int(region.span.latitudeDelta * 111_000))
+
+        do {
+            let backendPlaces: [BackendPlace] = try await APIClient.shared.get(
+                "places", query: ["lat": lat, "lon": lon, "radius": radiusM]
+            )
+            for bp in backendPlaces {
+                let osmID = bp.osmNodeID
+                let descriptor = FetchDescriptor<CachedPlace>(
+                    predicate: #Predicate { $0.osmNodeID == osmID }
+                )
+                guard let cached = try modelContext.fetch(descriptor).first else { continue }
+                cached.avgRating = bp.avgRating
+                cached.reviewCount = bp.reviewCount
+                if let note = bp.specialNote { cached.specialNote = note }
+            }
+            try modelContext.save()
+            loadCachedPlaces()
+        } catch {
+            // Backend overlay is best-effort — don't show errors for this
+            print("[MapVM] Backend overlay failed: \(error.localizedDescription)")
         }
     }
 

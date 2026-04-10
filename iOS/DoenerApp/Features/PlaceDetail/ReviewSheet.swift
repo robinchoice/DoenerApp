@@ -7,33 +7,39 @@ struct ReviewSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var rating: Int = 0
+    @State private var sauceRating: Int = 0
+    @State private var fleischRating: Int = 0
+    @State private var brotRating: Int = 0
+    @State private var overrideGesamt: Bool = false
     @State private var text: String = ""
+    @State private var specialNote: String = ""
+
+    private var computedRating: Int {
+        let dims = [sauceRating, fleischRating, brotRating].filter { $0 > 0 }
+        guard !dims.isEmpty else { return 0 }
+        return Int((Double(dims.reduce(0, +)) / Double(dims.count)).rounded())
+    }
+
+    private var effectiveRating: Int {
+        if overrideGesamt { return rating }
+        let computed = computedRating
+        return computed > 0 ? computed : rating
+    }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                Text(place.name)
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(spacing: 24) {
+                    Text(place.name)
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
 
-                // Döner rating
-                DoenerRatingView(value: rating, size: 40, interactive: true) { newValue in
-                    rating = newValue
-                }
-                .padding(.vertical, 8)
-
-                // Rating label
-                if rating > 0 {
-                    Text(ratingLabel)
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(.orange)
-                        .transition(.scale.combined(with: .opacity))
-                }
-
-                // Text input
-                TextField("Was war gut, was nicht? (optional)", text: $text, axis: .vertical)
-                    .lineLimit(3...6)
-                    .textFieldStyle(.plain)
+                    // Dimension ratings
+                    VStack(spacing: 16) {
+                        dimensionRow("Soße", value: $sauceRating)
+                        dimensionRow("Fleisch", value: $fleischRating)
+                        dimensionRow("Brot", value: $brotRating)
+                    }
                     .padding()
                     .background {
                         RoundedRectangle(cornerRadius: 12, style: .continuous)
@@ -44,9 +50,73 @@ struct ReviewSheet: View {
                             }
                     }
 
-                Spacer()
+                    // Overall rating
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("Gesamt")
+                                .font(.subheadline.weight(.semibold))
+                            Spacer()
+                            if computedRating > 0 {
+                                Button(overrideGesamt ? "Auto" : "Manuell") {
+                                    withAnimation(.spring(duration: 0.3)) {
+                                        overrideGesamt.toggle()
+                                        if !overrideGesamt {
+                                            rating = computedRating
+                                        }
+                                    }
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                            }
+                        }
+
+                        DoenerRatingView(
+                            value: effectiveRating,
+                            size: 40,
+                            interactive: overrideGesamt || computedRating == 0
+                        ) { newValue in
+                            rating = newValue
+                            if computedRating > 0 { overrideGesamt = true }
+                        }
+
+                        if effectiveRating > 0 {
+                            Text(ratingLabel(effectiveRating))
+                                .font(.subheadline.weight(.medium))
+                                .foregroundStyle(.orange)
+                                .transition(.scale.combined(with: .opacity))
+                        }
+                    }
+
+                    // Special note
+                    TextField("Was macht den Laden besonders?", text: $specialNote)
+                        .lineLimit(1)
+                        .textFieldStyle(.plain)
+                        .padding()
+                        .background {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(.orange.opacity(0.2), lineWidth: 0.5)
+                                }
+                        }
+
+                    // Text input
+                    TextField("Was war gut, was nicht? (optional)", text: $text, axis: .vertical)
+                        .lineLimit(3...6)
+                        .textFieldStyle(.plain)
+                        .padding()
+                        .background {
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(.ultraThinMaterial)
+                                .overlay {
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .strokeBorder(.orange.opacity(0.2), lineWidth: 0.5)
+                                }
+                        }
+                }
+                .padding()
             }
-            .padding()
             .navigationTitle(existingReview != nil ? "Bewertung bearbeiten" : "Bewerten")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -56,20 +126,57 @@ struct ReviewSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Speichern") { save() }
                         .fontWeight(.semibold)
-                        .disabled(rating == 0)
+                        .disabled(effectiveRating == 0)
                 }
             }
         }
         .onAppear {
             if let existingReview {
                 rating = existingReview.rating
+                sauceRating = existingReview.sauceRating ?? 0
+                fleischRating = existingReview.fleischRating ?? 0
+                brotRating = existingReview.brotRating ?? 0
                 text = existingReview.text ?? ""
+                // Check if the stored rating differs from computed → user had overridden
+                let computed = [sauceRating, fleischRating, brotRating].filter { $0 > 0 }
+                if !computed.isEmpty {
+                    let avg = Int((Double(computed.reduce(0, +)) / Double(computed.count)).rounded())
+                    overrideGesamt = existingReview.rating != avg
+                }
+            }
+            specialNote = place.specialNote ?? ""
+        }
+    }
+
+    private func dimensionRow(_ label: String, value: Binding<Int>) -> some View {
+        HStack {
+            Text(label)
+                .font(.subheadline)
+                .frame(width: 60, alignment: .leading)
+            DoenerRatingView(value: value.wrappedValue, size: 28, interactive: true) { newValue in
+                value.wrappedValue = newValue
+                if !overrideGesamt {
+                    rating = computedRating
+                }
+            }
+            Spacer()
+            if value.wrappedValue > 0 {
+                Button {
+                    withAnimation(.spring(duration: 0.2)) {
+                        value.wrappedValue = 0
+                        if !overrideGesamt { rating = computedRating }
+                    }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                }
             }
         }
     }
 
-    private var ratingLabel: String {
-        switch rating {
+    private func ratingLabel(_ value: Int) -> String {
+        switch value {
         case 1: "Schlecht"
         case 2: "Naja"
         case 3: "Okay"
@@ -80,24 +187,37 @@ struct ReviewSheet: View {
     }
 
     private func save() {
+        let finalRating = effectiveRating
+        let sauce: Int? = sauceRating > 0 ? sauceRating : nil
+        let fleisch: Int? = fleischRating > 0 ? fleischRating : nil
+        let brot: Int? = brotRating > 0 ? brotRating : nil
+        let special: String? = specialNote.isEmpty ? nil : specialNote
+
         if let existingReview {
-            existingReview.rating = rating
+            existingReview.rating = finalRating
+            existingReview.sauceRating = sauce
+            existingReview.fleischRating = fleisch
+            existingReview.brotRating = brot
             existingReview.text = text.isEmpty ? nil : text
             existingReview.updatedAt = Date()
         } else {
             let review = Review(
                 placeOsmNodeID: place.osmNodeID,
                 placeName: place.name,
-                rating: rating,
+                rating: finalRating,
+                sauceRating: sauce,
+                fleischRating: fleisch,
+                brotRating: brot,
                 text: text.isEmpty ? nil : text
             )
             modelContext.insert(review)
         }
 
+        place.specialNote = special
         updatePlaceRating()
         try? modelContext.save()
 
-        // Fire-and-forget backend sync. Skips silently if not authenticated.
+        // Fire-and-forget backend sync
         let osmID = place.osmNodeID
         let placeName = place.name
         let lat = place.latitude
@@ -106,13 +226,12 @@ struct ReviewSheet: View {
         let postal = place.postalCode
         let city = place.city
         let hours = place.openingHours
-        let ratingValue = rating
-        let textValue = text.isEmpty ? nil : text
         Task.detached {
             await ReviewSyncService.push(
                 osmNodeID: osmID, name: placeName, latitude: lat, longitude: lon,
                 address: addr, postalCode: postal, city: city, openingHours: hours,
-                rating: ratingValue, text: textValue
+                rating: finalRating, sauceRating: sauce, fleischRating: fleisch,
+                brotRating: brot, text: text.isEmpty ? nil : text, specialNote: special
             )
         }
 

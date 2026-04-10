@@ -18,6 +18,7 @@ final class CachedPlace {
 
     // Local-only fields
     var userNote: String?
+    var specialNote: String?
     var userRating: Int?
     var isFavorite: Bool
 
@@ -89,14 +90,22 @@ final class Review {
     var placeOsmNodeID: Int64
     var placeName: String
     var rating: Int // 1-5
+    var sauceRating: Int?
+    var fleischRating: Int?
+    var brotRating: Int?
     var text: String?
     var createdAt: Date
     var updatedAt: Date
 
-    init(placeOsmNodeID: Int64, placeName: String, rating: Int, text: String? = nil) {
+    init(placeOsmNodeID: Int64, placeName: String, rating: Int,
+         sauceRating: Int? = nil, fleischRating: Int? = nil, brotRating: Int? = nil,
+         text: String? = nil) {
         self.placeOsmNodeID = placeOsmNodeID
         self.placeName = placeName
         self.rating = rating
+        self.sauceRating = sauceRating
+        self.fleischRating = fleischRating
+        self.brotRating = brotRating
         self.text = text
         self.createdAt = Date()
         self.updatedAt = Date()

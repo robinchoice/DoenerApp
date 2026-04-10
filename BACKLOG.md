@@ -36,12 +36,12 @@ Statuslegende: ☐ offen · 🔄 in Arbeit · ✅ erledigt
 
 ## Sprint 2 — Backend-Foundation + Bewertungs-Refactor
 
-- ☐ Reviews + Visits + Stamps ans Backend syncen
+- ✅ Reviews + Visits + Stamps ans Backend syncen
 - ☐ `Shop`-Entity im Backend mit Overlay-Strategie (`source: osm | user_reported | owner_claimed`)
-- ☐ Map-Layer mergt OSM + Backend-Shops
-- ☐ Multi-Dimension-Bewertungs-Assessment (Sauce / Fleisch / Brot / Special-Notiz)
-- ☐ Kurzbeschreibung pro Laden ("Special": "Handgemachte Falafel", "Chili-Cheese-Döner" etc.)
-- ☐ Community-Review-AI-Summary auf Shop-Detail
+- ✅ Map-Layer mergt OSM + Backend-Shops (Backend-Places overlayed mit avgRating/reviewCount/specialNote)
+- ✅ Multi-Dimension-Bewertungs-Assessment (Sauce / Fleisch / Brot, Gesamt = Durchschnitt mit Override)
+- ✅ Kurzbeschreibung pro Laden ("Special" auf DoenerPlace, editierbar via ReviewSheet)
+- ✅ Community-Review-Summary auf Shop-Detail (template-basiert, kein LLM)
 - ☐ Tracking: Welche Shops werden aufgerufen, wo werden Stempel gesetzt
 
 ---

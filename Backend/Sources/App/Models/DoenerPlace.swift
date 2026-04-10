@@ -37,6 +37,9 @@ final class DoenerPlace: Model, Content, @unchecked Sendable {
     @Field(key: "review_count")
     var reviewCount: Int
 
+    @OptionalField(key: "special_note")
+    var specialNote: String?
+
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
 
