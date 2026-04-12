@@ -8,6 +8,8 @@ struct ProfileView: View {
     @State private var friendsStore = FriendsStore()
     @State private var showingSignIn = false
     @State private var showingSettings = false
+    @State private var showingWrapped = false
+    @State private var foodCounts: [(FoodItem, Int)] = []
 
     var body: some View {
         NavigationStack {
@@ -74,6 +76,31 @@ struct ProfileView: View {
                         StatCard(value: "\(stats.uniquePlaces)", label: "Läden", icon: "mappin.circle.fill", color: .purple)
                     }
 
+                    // Food stats
+                    FoodStatsCard(foodCounts: foodCounts, totalVisits: stats.totalVisits)
+
+                    // Jahresrückblick button
+                    Button { showingWrapped = true } label: {
+                        GlassCard {
+                            HStack {
+                                Image(systemName: "sparkles")
+                                    .font(.title2)
+                                    .foregroundStyle(.orange)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Döner Wrapped \(String(Calendar.current.component(.year, from: Date())))")
+                                        .font(.subheadline.weight(.semibold))
+                                    Text("Dein persönlicher Jahresrückblick")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+
                     // Stamp card
                     StampCardView(stats: stats)
 
@@ -108,6 +135,9 @@ struct ProfileView: View {
                 SignInView { showingSignIn = false }
                     .environment(authStore)
             }
+            .fullScreenCover(isPresented: $showingWrapped) {
+                DoenerWrappedView()
+            }
         }
     }
 
@@ -138,6 +168,16 @@ struct ProfileView: View {
                 cityCounts[city, default: 0] += 1
             }
         }
+
+        // Food type counts
+        var foodMap: [String: Int] = [:]
+        for v in visits {
+            if let ft = v.foodType { foodMap[ft, default: 0] += 1 }
+        }
+        foodCounts = FoodItem.all.compactMap { item -> (FoodItem, Int)? in
+            guard let count = foodMap[item.id] else { return nil }
+            return (item, count)
+        }.sorted { $0.1 > $1.1 }
 
         stats = ProfileStats(
             totalVisits: visits.count,

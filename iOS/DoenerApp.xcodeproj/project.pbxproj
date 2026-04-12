@@ -44,6 +44,7 @@
 		F8AD4453ABD62C22678BA73A /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5126A6968EF79B62B2B7C74E /* SignInView.swift */; };
 		DC5D534A5A923D52E47D2454 /* RotaryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF48370959CB0E26E5EA606 /* RotaryPicker.swift */; };
 		3DBA12ABF036DC3CBEBB9BD2 /* CheckInSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 106FDC9FA481822512FAF5C9 /* CheckInSheet.swift */; };
+		E4161538409D875EFB2D6B43 /* FoodStatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B8440726326F1C7C3276D5D /* FoodStatsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -98,6 +99,7 @@
 		FCFE63EACFDB1D907C54AFA1 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		6BF48370959CB0E26E5EA606 /* RotaryPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotaryPicker.swift; sourceTree = "<group>"; };
 		106FDC9FA481822512FAF5C9 /* CheckInSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckInSheet.swift; sourceTree = "<group>"; };
+		2B8440726326F1C7C3276D5D /* FoodStatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodStatsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -308,6 +310,7 @@
 		D996CEE985D105F3B648D237 /* Profile */ = {
 			isa = PBXGroup;
 			children = (
+				2B8440726326F1C7C3276D5D /* FoodStatsView.swift */,
 				AC6C6AA4DFE3E20CEBB4B67A /* ProfileView.swift */,
 				A2E5113F84CEF055B02DE385 /* SettingsView.swift */,
 			);
@@ -444,6 +447,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E4161538409D875EFB2D6B43 /* FoodStatsView.swift in Sources */,
 				DC5D534A5A923D52E47D2454 /* RotaryPicker.swift in Sources */,
 				3DBA12ABF036DC3CBEBB9BD2 /* CheckInSheet.swift in Sources */,
 				E54C1D4F0DDA7B57B9E7FA5E /* DiscoverView.swift in Sources */,
