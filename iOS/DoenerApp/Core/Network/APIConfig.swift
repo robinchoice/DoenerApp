@@ -1,8 +1,8 @@
 import Foundation
 
 enum APIConfig {
-    /// Production backend on Fly.io. Override in Settings for local dev.
-    static let defaultBaseURL = URL(string: "https://doener-api.fly.dev/api/v1")!
+    /// Production backend on Coolify. Override in Settings for local dev.
+    static let defaultBaseURL = URL(string: "https://doener-api.diespaetzles.lol/api/v1")!
 
     static let backendOverrideKey = "backendBaseURLOverride"
 

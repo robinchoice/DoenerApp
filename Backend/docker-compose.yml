@@ -12,6 +12,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-doener}
       - DB_NAME=doenerapp
       - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - ALLOW_DEV_LOGIN=${ALLOW_DEV_LOGIN:-true}
     depends_on:
       db:
         condition: service_healthy
