@@ -40,6 +40,8 @@
 		E458455416FAA136BFC8A1EF /* MapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF0BFBBCAC868CDB1C21996 /* MapViewModel.swift */; };
 		E887A7B416688679B9712FE3 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC6C6AA4DFE3E20CEBB4B67A /* ProfileView.swift */; };
 		F8AD4453ABD62C22678BA73A /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5126A6968EF79B62B2B7C74E /* SignInView.swift */; };
+		E54C1D4F0DDA7B57B9E7FA5E /* DiscoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8ED82D1D76B351BBEE9F3BD3 /* DiscoverView.swift */; };
+		0262FC3060628260EFB326F3 /* DiscoverViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 030FC4165E4A48CF59FE101A /* DiscoverViewModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -90,6 +92,8 @@
 		F9634BBA56CF03FA6E915BBB /* PlaceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceDetailView.swift; sourceTree = "<group>"; };
 		FAF0BFBBCAC868CDB1C21996 /* MapViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapViewModel.swift; sourceTree = "<group>"; };
 		FCFE63EACFDB1D907C54AFA1 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		8ED82D1D76B351BBEE9F3BD3 /* DiscoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverView.swift; sourceTree = "<group>"; };
+		030FC4165E4A48CF59FE101A /* DiscoverViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverViewModel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -228,6 +232,7 @@
 		85BE9B26C246448BB6FD7010 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				F37A92F1ECABBDDA83E6CD6F /* Discover */,
 				4E31876D1BC715E69464351B /* Auth */,
 				D749E16CCA4B53634A4C6A18 /* Feed */,
 				B85CC045BBE01E24B50254E2 /* Map */,
@@ -318,6 +323,15 @@
 				0F7A2100BFF736ACF7DBD8E7 /* RankingView.swift */,
 			);
 			path = Ranking;
+			sourceTree = "<group>";
+		};
+		F37A92F1ECABBDDA83E6CD6F /* Discover */ = {
+			isa = PBXGroup;
+			children = (
+				8ED82D1D76B351BBEE9F3BD3 /* DiscoverView.swift */,
+				030FC4165E4A48CF59FE101A /* DiscoverViewModel.swift */,
+			);
+			path = Discover;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -417,6 +431,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E54C1D4F0DDA7B57B9E7FA5E /* DiscoverView.swift in Sources */,
+				0262FC3060628260EFB326F3 /* DiscoverViewModel.swift in Sources */,
 				B801A90D0C89C96A0A695456 /* APIClient.swift in Sources */,
 				0FE53A19D58564FF5D82E451 /* APIConfig.swift in Sources */,
 				AEFBC3D10552F7F96657865B /* APIDTOs.swift in Sources */,

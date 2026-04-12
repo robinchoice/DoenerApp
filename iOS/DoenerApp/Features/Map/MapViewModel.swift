@@ -21,7 +21,7 @@ final class MapViewModel {
 
     /// Skip Overpass entirely above this span — query would time out and the
     /// result would be useless dot-soup anyway.
-    private let maxFetchableSpan: Double = 0.3
+    private let maxFetchableSpan: Double = 0.5
 
     func setup(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -114,8 +114,10 @@ final class MapViewModel {
             lastFetchedRegion = region
             loadCachedPlaces()
 
-            // Overlay backend community data (ratings, specialNote) onto cached places
-            await mergeBackendPlaces(region: region, modelContext: modelContext)
+            // Overlay backend community data (ratings, specialNote) onto cached places — non-blocking
+            Task { [weak self] in
+                await self?.mergeBackendPlaces(region: region, modelContext: modelContext)
+            }
         } catch is CancellationError {
             // Ignore cancellation from region changes
         } catch let urlError as URLError where urlError.code == .cancelled {

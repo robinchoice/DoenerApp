@@ -3,6 +3,10 @@ import SwiftUI
 struct ContentView: View {
     var body: some View {
         TabView {
+            Tab("Entdecken", systemImage: "sparkle.magnifyingglass") {
+                DiscoverView()
+            }
+
             Tab("Karte", systemImage: "map.fill") {
                 MapView()
             }

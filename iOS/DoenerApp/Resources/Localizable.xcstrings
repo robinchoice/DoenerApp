@@ -47,9 +47,6 @@
         }
       }
     },
-    "🥙" : {
-
-    },
     "1 Bewertung" : {
       "localizations" : {
         "en" : {
@@ -93,6 +90,9 @@
     "Auf Default zurücksetzen" : {
 
     },
+    "Auto" : {
+
+    },
     "Backend-URL" : {
 
     },
@@ -128,6 +128,9 @@
 
     },
     "Checke bei einem Döner-Laden ein oder schreibe eine Bewertung." : {
+
+    },
+    "Community" : {
 
     },
     "Damit wir dir Döner-Läden\nin deiner Nähe zeigen können." : {
@@ -250,6 +253,9 @@
     "Gemeldete Läden (%lld)" : {
 
     },
+    "Gesamt" : {
+
+    },
     "Hilft Robin, den Laden später zu finden." : {
 
     },
@@ -312,6 +318,9 @@
 
     },
     "Made with ❤️ und viel Knoblauchsoße." : {
+
+    },
+    "Manuell" : {
 
     },
     "Name (z.B. Erbil)" : {
@@ -546,16 +555,13 @@
     "Version" : {
 
     },
-    "Verstanden" : {
-
-    },
     "Wähl einen Namen, damit du Freunde\nhinzufügen und Erfolge sammeln kannst." : {
 
     },
     "Was ist besonders? Special-Soße, Falafel-Rezept, etc." : {
 
     },
-    "Was ist Einchecken?" : {
+    "Was macht den Laden besonders?" : {
 
     },
     "Was war gut, was nicht? (optional)" : {
