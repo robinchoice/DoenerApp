@@ -1,9 +1,10 @@
 FROM swift:6.0-jammy AS build
 WORKDIR /build
 COPY Shared ./Shared
-COPY Backend ./Backend
+COPY Backend/Package.swift Backend/Package.resolved* ./Backend/
 WORKDIR /build/Backend
 RUN swift package resolve
+COPY Backend/Sources ./Sources
 RUN swift build -c release --static-swift-stdlib
 
 FROM ubuntu:22.04
