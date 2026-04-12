@@ -1,61 +1,86 @@
 # Döner-App Backlog
 
-Single-Source-of-Truth für offene Aufgaben. Sortiert nach Sprint/Phase. Strategie-Roadmap liegt unter `~/.claude/plans/vivid-spinning-cook.md`.
+Single-Source-of-Truth für offene Aufgaben. Sortiert nach Sprint/Phase.
 
 Statuslegende: ☐ offen · 🔄 in Arbeit · ✅ erledigt
 
 ---
 
-## Sprint 1 — Polish + Tester-Readiness
+## Sprint 1 — Polish + Tester-Readiness ✅
 
-### Quick Wins
-- ✅ **S1.1** Stempel-Tiers auf 6 Stufen umbauen (Dönerneuling → Dönerlegende), lokalisiert
-- ✅ **S1.2** Sterne durch Döner-Symbole ersetzen (`DoenerRatingView` als Shared Component)
-- ✅ **S1.3** App-Icon austauschen (OG-Dönermann-Bild)
-- ✅ **S1.4** "Was ist Einchecken?" UX-Klarstellung (Onboarding + Info-Button im Detail)
-
-### Settings & Dev-Modus
-- ✅ **S1.5** Settings-Screen anlegen (Account, Backend-URL, Dev-Reset, Über)
-  - ✅ DisplayName editierbar (PATCH /users/me)
-  - ☐ ~~Sprache umschalten~~ (System-Default reicht für Sprint 1)
-  - ✅ Backend-URL editierbar (UserDefaults, kein Recompile bei WiFi-Wechsel)
-  - ✅ 4 konfigurierbare Reset-Buttons: Logout / Daten löschen / Cache leeren / Komplett zurücksetzen
-  - ✅ Version + Build + "Made with Knoblauchsoße"
-
-### Map
-- ✅ **S1.6** Map-Coverage-Lücke schließen
-  - ✅ Stufe 1: Overpass-Query erweitert (turkish/arab/lebanese/syrian/falafel/shawarma + Name-Patterns dürüm/lahmacun/imbiss)
-  - ✅ Stufe 3: User-Report "Laden hinzufügen" (Plus-Button auf Map, lokal in `MissingShopReport`, Liste in Settings)
-  - Stufe 2 (eigenes Shop-Backend) → Sprint 2 / Phase 0
-- ✅ **S1.7** Map-Performance: Skip bei großem Span, Cancel-Old-Task pattern
-
-### Tooling
-- ✅ **S1.8** `BACKLOG.md` im Repo angelegt
+- ✅ Stempel-Tiers (6 Stufen), Döner-Symbole statt Sterne, App-Icon
+- ✅ Settings-Screen (DisplayName, Backend-URL, 4 Reset-Buttons)
+- ✅ Map-Coverage (Overpass erweitert, User-Report), Map-Performance
+- ✅ "Was ist Einchecken?" Onboarding (später entfernt — unnötig)
 
 ---
 
-## Sprint 2 — Backend-Foundation + Bewertungs-Refactor
+## Sprint 2 — Backend-Foundation + Bewertungs-Refactor ✅
 
-- ✅ Reviews + Visits + Stamps ans Backend syncen
-- ☐ `Shop`-Entity im Backend mit Overlay-Strategie (`source: osm | user_reported | owner_claimed`)
-- ✅ Map-Layer mergt OSM + Backend-Shops (Backend-Places overlayed mit avgRating/reviewCount/specialNote)
-- ✅ Multi-Dimension-Bewertungs-Assessment (Sauce / Fleisch / Brot, Gesamt = Durchschnitt mit Override)
-- ✅ Kurzbeschreibung pro Laden ("Special" auf DoenerPlace, editierbar via ReviewSheet)
-- ✅ Community-Review-Summary auf Shop-Detail (template-basiert, kein LLM)
-- ☐ Tracking: Welche Shops werden aufgerufen, wo werden Stempel gesetzt
+- ✅ Reviews + Visits ans Backend syncen (fire-and-forget)
+- ✅ Multi-Dimension-Bewertung (Sauce/Fleisch/Brot, Gesamt = Durchschnitt mit Override)
+- ✅ Kurzbeschreibung pro Laden (`specialNote` auf DoenerPlace)
+- ✅ Map-Overlay: Backend-Places mit avgRating/reviewCount/specialNote
+- ✅ Community-Review-Summary (template-basiert, GET /places/by_osm/:id/summary)
+- ☐ Shop-Entity mit source-Strategie (osm | user_reported | owner_claimed) — verschoben
+- ☐ Tracking: Welche Shops aufgerufen, wo Stempel gesetzt — verschoben
 
 ---
 
-## Sprint 3 — Discover & Gamification
+## Sprint 3 — Discover, Suche & Gamification
 
-- ☐ 5. Tab "In deiner Nähe / im Hype" (Lieferando-style Discover)
-- ☐ Yufka/Döner-Counter + Jahresrückblick-Stats ("Wieviel Yufkas dieses Jahr?")
-- ☐ Beer-with-me Wählscheiben-Status-Picker ("Robin isst gerade einen großen Teller bei Izmir")
-  - Symbole auf Kreis, Drehung selektiert, Auslöser regnet Konfetti-Emoji
-- ☐ Snapchat-Heatmap der Dönerdichte
-- ☐ Pokemon-Go-Anreize: "Sammel deinen Lieblingsdönermann" — User abklappern Läden
-- ☐ Freunde via Telefonnummer / Kontakte hinzufügen
-- ☐ Mehr Gamification-Tiefe (TBD)
+### S3.A Suchfunktion + Discover-Startseite (Prio 1)
+- ☐ **Neuer 1. Tab "Entdecken"** als Startseite (Lieferando-style)
+  - Suchleiste oben (Places durchsuchen nach Name/Stadt)
+  - "In deiner Nähe" — nächste Dönerläden mit Rating
+  - "Gerade im Hype" — meiste Check-ins/Reviews letzte 7 Tage
+  - "Neu bewertet" — frische Reviews von Freunden
+- ☐ Karte wird 2. Tab (statt 1.)
+
+### S3.B Google Maps Places API (Prio 1)
+- ☐ Overpass durch Google Maps Places API ersetzen (oder hybrid)
+  - Verlässlichere Daten, aktuelle Öffnungszeiten, Fotos
+  - Braucht API-Key + Kostenabschätzung (Pay-per-Query)
+  - Fallback: Overpass behalten als kostenlose Alternative
+
+### S3.C Wählscheiben-Status-Picker (Prio 2)
+- ☐ Kreisförmiger Picker: Symbole (Döner, Pommes, Lahmacun, Teller, Yufka, etc.) auf Wählscheibe
+  - Oberstes Symbol = ausgewählt + größer, Rest kleiner
+  - Drehbewegung verschiebt Symbole auf dem Kreis
+  - Auslöse-Button in der Mitte → Emoji explodiert + Konfetti-Regen
+  - Status: "Robin isst gerade einen großen Teller bei Izmir"
+  - Sichtbar für Freunde im Feed
+
+### S3.D Yufka/Döner-Counter + Jahresrückblick (Prio 2)
+- ☐ Visits um Typ erweitern (Döner, Yufka, Lahmacun, Teller, Pommes, Falafel)
+  - Wählscheibe aus S3.C als Typ-Auswahl beim Check-in
+- ☐ Stats-View im Profil: "Dieses Jahr: 47 Döner, 12 Yufkas, 3 Falafel"
+- ☐ Jahresrückblick-Screen (Spotify-Wrapped-Style)
+
+### S3.E Pokemon-Go Sammelmechanik (Prio 2)
+- ☐ "Besuche X verschiedene Läden" Achievements
+- ☐ Sammelkarte pro Laden (erst sichtbar nach Check-in)
+- ☐ Stadtteil-Badges: "Alle Dönerläden in der Wiehre besucht"
+- ☐ Verknüpfung mit bestehendem Achievement-System
+
+### S3.F Snapchat-Heatmap (Prio 3)
+- ☐ Map-Overlay: Dönerdichte als Heatmap-Layer
+- ☐ Basiert auf Backend-Places (reviewCount als Gewicht)
+
+---
+
+## Sprint 4 — Döner-Monopoly & Social
+
+### S4.A Döner-Monopoly
+- ☐ Konzept: Sammelkarten-System pro Dönerladen (wie McDonald's Monopoly)
+  - Dezentral: jeder Laden kann eigene "Karten" / Belohnungen definieren
+  - User sammeln durch Check-ins, Reviews, Freunde einladen
+  - Seltene Karten durch besondere Aktionen (erster Review, 10. Besuch, etc.)
+- ☐ Braucht Laden-Onboarding (Phase 2) als Grundlage
+
+### S4.B Freunde via Kontakte
+- ☐ Telefonnummer-basiertes Matching (Kontakte abgleichen)
+- ☐ Einladungs-Link teilen ("Komm in die Döner-App!")
 
 ---
 
@@ -63,24 +88,28 @@ Statuslegende: ☐ offen · 🔄 in Arbeit · ✅ erledigt
 
 Diese Themen brauchen Konzept-Entscheidung **vor** dem Code:
 
-- ☐ **Sign-up-Journey** für Kunden ↔ Läden gestalten (wie unterscheiden, wo trennen)
+- ☐ **Sign-up-Journey** für Kunden ↔ Läden gestalten
 - ☐ **Onboarding-Stufen für Läden** definieren
-  - Stufe 1: Nur in App sichtbar (passive)
+  - Stufe 1: Nur in App sichtbar (passiv)
   - Stufe 2: Teilnahme am Stempelkarten-System
   - Stufe 3: Voucher-Einlösung + Auszahlung
 - ☐ **Verifizierung des Laden-Onboardings** (OSM-Telefon? Postkarte? Foto?)
-- ☐ **Anreize für User**, die einen Laden onboarden (Achievement, Sammelabzeichen, Status)
+- ☐ **Anreize für User**, die einen Laden onboarden (Achievement, Sammelabzeichen)
 - ☐ **QR-Sticker-Programm** für Läden ("Find mich in der Döner-App!" + Dankeschön-Paket)
-- ☐ NFT/BRC-20-Belohnung — **Empfehlung: nicht umsetzen**, simples digitales Sammelabzeichen reicht (Crypto-Wallet killt Conversion)
+- ☐ NFT/BRC-20 — **Empfehlung: simples digitales Sammelabzeichen** statt Crypto (Wallet killt Conversion)
 
 ---
 
 ## Erledigt seit Projektstart
 
 - ✅ Sideload-Auth via Dev-Login (Free Provisioning kompatibel)
-- ✅ Overpass-Query holt nodes + ways + relations (Erbil/Rieselfeld & Co. tauchen auf)
-- ✅ Friend-System mit Apple Sign-In (jetzt Dev-Login)
+- ✅ Overpass-Query holt nodes + ways + relations
+- ✅ Friend-System mit Dev-Login
 - ✅ Favorites mit Heart-Toggle, pink Pins, Map-Filter
 - ✅ Achievement-Unlock-Logik für 10 von 11 Achievements
 - ✅ Feed-Tab mit chronologischem Activity-Stream
 - ✅ Ranking-Tab mit sortierbarem persönlichem Döner-Ranking
+- ✅ Multi-Dimension-Bewertung (Sauce/Fleisch/Brot + Gesamt)
+- ✅ Special-Note pro Laden
+- ✅ Community-Summary auf Shop-Detail
+- ✅ Map-Overlay Backend → OSM
