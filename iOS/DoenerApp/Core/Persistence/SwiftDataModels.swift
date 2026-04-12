@@ -76,12 +76,15 @@ final class Visit {
     var placeName: String
     var visitedAt: Date
     var comment: String?
+    var foodType: String?
 
-    init(placeOsmNodeID: Int64, placeName: String, visitedAt: Date = Date(), comment: String? = nil) {
+    init(placeOsmNodeID: Int64, placeName: String, visitedAt: Date = Date(),
+         comment: String? = nil, foodType: String? = nil) {
         self.placeOsmNodeID = placeOsmNodeID
         self.placeName = placeName
         self.visitedAt = visitedAt
         self.comment = comment
+        self.foodType = foodType
     }
 }
 

@@ -8,11 +8,9 @@ struct PlaceDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var visits: [Visit] = []
     @State private var reviews: [Review] = []
-    @State private var showCheckInConfirmation = false
+    @State private var showCheckInSheet = false
     @State private var showReviewSheet = false
     @State private var showNoteSheet = false
-    @State private var checkInComment = ""
-    @State private var justCheckedIn = false
     @State private var summaryText: String?
 
     var body: some View {
@@ -74,7 +72,7 @@ struct PlaceDetailView: View {
                     }
 
                     ActionButton(title: "Einchecken", icon: "checkmark.circle.fill", color: .green) {
-                        showCheckInConfirmation = true
+                        showCheckInSheet = true
                     }
 
                     ActionButton(title: "Bewerten", icon: "fork.knife.circle.fill", color: .orange) {
@@ -174,55 +172,12 @@ struct PlaceDetailView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
-        .overlay {
-            if justCheckedIn {
-                CheckInToast()
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-        }
-        .alert("Einchecken", isPresented: $showCheckInConfirmation) {
-            TextField("Kommentar (optional)", text: $checkInComment)
-            Button("Einchecken") { checkIn() }
-            Button("Abbrechen", role: .cancel) { checkInComment = "" }
-        } message: {
-            Text("Bei \(place.name) einchecken?")
-        }
-    }
-
-    private func checkIn() {
-        let comment = checkInComment.isEmpty ? nil : checkInComment
-        let visit = Visit(
-            placeOsmNodeID: place.osmNodeID,
-            placeName: place.name,
-            comment: comment
-        )
-        modelContext.insert(visit)
-        try? modelContext.save()
-
-        // Fire-and-forget backend sync.
-        let osmID = place.osmNodeID
-        let placeName = place.name
-        let lat = place.latitude
-        let lon = place.longitude
-        let addr = place.address
-        let postal = place.postalCode
-        let city = place.city
-        let hours = place.openingHours
-        let visitedAt = visit.visitedAt
-        Task.detached {
-            await VisitSyncService.push(
-                osmNodeID: osmID, name: placeName, latitude: lat, longitude: lon,
-                address: addr, postalCode: postal, city: city, openingHours: hours,
-                visitedAt: visitedAt, comment: comment
-            )
-        }
-
-        checkInComment = ""
-        loadVisits()
-
-        withAnimation { justCheckedIn = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-            withAnimation { justCheckedIn = false }
+        .sheet(isPresented: $showCheckInSheet) {
+            loadVisits()
+        } content: {
+            CheckInSheet(place: place)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
         }
     }
 
@@ -338,15 +293,30 @@ struct DimensionChip: View {
 struct VisitRow: View {
     let visit: Visit
 
+    private var foodEmoji: String {
+        FoodItem.all.first { $0.id == visit.foodType }?.emoji ?? "✅"
+    }
+
     var body: some View {
         GlassCard {
             HStack {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
+                Text(foodEmoji)
+                    .font(.title2)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(visit.visitedAt, format: .dateTime.day().month().year().hour().minute())
-                        .font(.subheadline.weight(.medium))
+                    HStack(spacing: 6) {
+                        Text(visit.visitedAt, format: .dateTime.day().month().year().hour().minute())
+                            .font(.subheadline.weight(.medium))
+                        if let type = visit.foodType,
+                           let item = FoodItem.all.first(where: { $0.id == type }) {
+                            Text(item.label)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(.orange)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(.orange.opacity(0.12), in: Capsule())
+                        }
+                    }
 
                     if let comment = visit.comment {
                         Text(comment)
@@ -357,29 +327,6 @@ struct VisitRow: View {
 
                 Spacer()
             }
-        }
-    }
-}
-
-// MARK: - Check-In Toast
-
-struct CheckInToast: View {
-    var body: some View {
-        VStack {
-            HStack(spacing: 10) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.green)
-                Text("Eingecheckt!")
-                    .font(.subheadline.weight(.semibold))
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-            .background(.ultraThinMaterial, in: Capsule())
-            .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
-            .padding(.top, 8)
-
-            Spacer()
         }
     }
 }
