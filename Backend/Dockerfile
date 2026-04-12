@@ -5,6 +5,7 @@ COPY Backend/Package.swift Backend/Package.resolved* ./Backend/
 WORKDIR /build/Backend
 RUN swift package resolve
 COPY Backend/Sources ./Sources
+RUN mkdir -p Tests/AppTests && touch Tests/AppTests/.gitkeep
 RUN swift build -c release --static-swift-stdlib --target App
 
 FROM ubuntu:22.04
