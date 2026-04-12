@@ -5,7 +5,7 @@ COPY Backend/Package.swift Backend/Package.resolved* ./Backend/
 WORKDIR /build/Backend
 RUN swift package resolve
 COPY Backend/Sources ./Sources
-RUN swift build -c release --static-swift-stdlib
+RUN swift build -c release --static-swift-stdlib --target App
 
 FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
