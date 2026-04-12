@@ -1,9 +1,8 @@
 import Foundation
 
 enum APIConfig {
-    /// Default Mac LAN IP serving the dev backend.
-    /// Update if your network changes: `ipconfig getifaddr en0`
-    static let defaultBaseURL = URL(string: "http://192.168.178.23:8080/api/v1")!
+    /// Production backend on Fly.io. Override in Settings for local dev.
+    static let defaultBaseURL = URL(string: "https://doener-api.fly.dev/api/v1")!
 
     static let backendOverrideKey = "backendBaseURLOverride"
 

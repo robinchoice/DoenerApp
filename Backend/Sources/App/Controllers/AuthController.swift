@@ -42,8 +42,12 @@ struct AuthController: RouteCollection {
     }
 
     // POST /auth/dev — sideload login without Apple Sign-In (Free Provisioning has no SIWA entitlement)
+    // Gated behind ALLOW_DEV_LOGIN env var for production safety.
     @Sendable
     func signInDev(req: Request) async throws -> AuthResponse {
+        guard Environment.get("ALLOW_DEV_LOGIN") == "true" else {
+            throw Abort(.notFound)
+        }
         struct Body: Content { let displayName: String }
         let body = try req.content.decode(Body.self)
         let trimmed = body.displayName.trimmingCharacters(in: .whitespaces)

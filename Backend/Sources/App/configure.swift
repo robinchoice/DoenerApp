@@ -1,6 +1,7 @@
 import Vapor
 import Fluent
 import FluentPostgresDriver
+import PostgresNIO
 
 func configure(_ app: Application) async throws {
     let host = Environment.get("DB_HOST") ?? "localhost"
@@ -9,13 +10,18 @@ func configure(_ app: Application) async throws {
     let password = Environment.get("DB_PASSWORD") ?? "doener"
     let database = Environment.get("DB_NAME") ?? "doenerapp"
 
+    let useTLS = Environment.get("DB_TLS") == "require"
+    let tls: PostgresConnection.Configuration.TLS = useTLS
+        ? (try .require(.init(configuration: .clientDefault)))
+        : .disable
+
     let pgConfig = SQLPostgresConfiguration(
         hostname: host,
         port: port,
         username: username,
         password: password,
         database: database,
-        tls: .disable
+        tls: tls
     )
     app.databases.use(.postgres(configuration: pgConfig), as: .psql)
 
@@ -28,5 +34,6 @@ func configure(_ app: Application) async throws {
     app.migrations.add(CreateVisit())
     app.migrations.add(AddDimensionRatings())
 
+    try await app.autoMigrate()
     try routes(app)
 }
