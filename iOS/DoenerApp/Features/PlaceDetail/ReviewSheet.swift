@@ -235,7 +235,8 @@ struct ReviewSheet: View {
             openingHours: place.openingHours
         )
         Task {
-            if !await ReviewSyncService.push(osmNodeID: osmID, body: body) {
+            let ok = await ReviewSyncService.push(osmNodeID: osmID, body: body)
+            if !ok {
                 SyncQueueService.enqueueReview(osmNodeID: osmID, body: body, context: modelContext)
             }
         }

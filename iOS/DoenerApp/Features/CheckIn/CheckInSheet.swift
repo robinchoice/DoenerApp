@@ -103,7 +103,8 @@ struct CheckInSheet: View {
             openingHours: place.openingHours
         )
         Task {
-            if !await VisitSyncService.push(osmNodeID: osmID, body: body) {
+            let ok = await VisitSyncService.push(osmNodeID: osmID, body: body)
+            if !ok {
                 SyncQueueService.enqueueVisit(osmNodeID: osmID, body: body, context: modelContext)
             }
         }
