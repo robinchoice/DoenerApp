@@ -9,3 +9,5 @@ extension AppleSignInRequest: @retroactive Content {}
 extension ReviewDTO: @retroactive Content {}
 extension VisitDTO: @retroactive Content {}
 extension PlaceSummaryDTO: @retroactive Content {}
+extension FeedItem: @retroactive Content {}
+extension LiveStatusDTO: @retroactive Content {}

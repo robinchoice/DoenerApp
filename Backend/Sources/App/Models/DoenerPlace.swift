@@ -1,5 +1,6 @@
 import Vapor
 import Fluent
+import DoenerShared
 
 final class DoenerPlace: Model, Content, @unchecked Sendable {
     static let schema = "doener_places"

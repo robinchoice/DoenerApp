@@ -4,7 +4,16 @@
     "—" : {
 
     },
+    "(%lld)" : {
+
+    },
     "%lld" : {
+
+    },
+    "%lld Besuche" : {
+
+    },
+    "%lld Bew." : {
 
     },
     "%lld Bewertungen" : {
@@ -37,6 +46,15 @@
         }
       }
     },
+    "%lld×" : {
+
+    },
+    "🏆" : {
+
+    },
+    "📍" : {
+
+    },
     "📍 %@, %@" : {
       "localizations" : {
         "de" : {
@@ -46,6 +64,15 @@
           }
         }
       }
+    },
+    "🗺️" : {
+
+    },
+    "🤷" : {
+
+    },
+    "🥙" : {
+
     },
     "1 Bewertung" : {
       "localizations" : {
@@ -99,9 +126,6 @@
     "Bearbeiten" : {
 
     },
-    "Bei %@ einchecken?" : {
-
-    },
     "Besuche (%lld)" : {
 
     },
@@ -127,6 +151,9 @@
     "Build" : {
 
     },
+    "Checke bei Döner-Läden ein und bewerte sie, um Empfehlungen zu sehen." : {
+
+    },
     "Checke bei einem Döner-Laden ein oder schreibe eine Bewertung." : {
 
     },
@@ -136,7 +163,19 @@
     "Damit wir dir Döner-Läden\nin deiner Nähe zeigen können." : {
 
     },
+    "Dein %@" : {
+
+    },
+    "Dein Döner-Konsum" : {
+
+    },
+    "Dein Favorit:" : {
+
+    },
     "Dein Name" : {
+
+    },
+    "Dein persönlicher Jahresrückblick" : {
 
     },
     "Dein persönliches Döner-Ranking erscheint hier." : {
@@ -160,6 +199,9 @@
           }
         }
       }
+    },
+    "Dein Stammladen:" : {
+
     },
     "Dein Standort" : {
 
@@ -186,6 +228,15 @@
         }
       }
     },
+    "Döner Wrapped %@" : {
+
+    },
+    "Döner-Besuche in %@" : {
+
+    },
+    "Döner-Laden suchen…" : {
+
+    },
     "Einchecken" : {
       "localizations" : {
         "en" : {
@@ -196,10 +247,10 @@
         }
       }
     },
-    "Eingecheckt!" : {
+    "Einstellungen" : {
 
     },
-    "Einstellungen" : {
+    "Entdecken" : {
 
     },
     "Entfernen" : {
@@ -266,6 +317,7 @@
 
     },
     "Karte" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -299,6 +351,9 @@
         }
       }
     },
+    "Lade Empfehlungen…" : {
+
+    },
     "Laden" : {
 
     },
@@ -326,6 +381,9 @@
     "Name (z.B. Erbil)" : {
 
     },
+    "Neu bewertet" : {
+
+    },
     "Nicht angemeldet" : {
 
     },
@@ -339,6 +397,9 @@
         }
       }
     },
+    "Noch kein Lieblings-Essen" : {
+
+    },
     "Noch kein Ranking" : {
 
     },
@@ -351,6 +412,12 @@
           }
         }
       }
+    },
+    "Noch keine Check-ins mit Essenstyp" : {
+
+    },
+    "Noch keine Empfehlungen" : {
+
     },
     "Noch keine Freunde" : {
 
@@ -550,6 +617,9 @@
 
     },
     "Über" : {
+
+    },
+    "verschiedene Läden entdeckt" : {
 
     },
     "Version" : {

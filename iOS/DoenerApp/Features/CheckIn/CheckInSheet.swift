@@ -90,21 +90,22 @@ struct CheckInSheet: View {
 
         // Backend sync
         let osmID = place.osmNodeID
-        let placeName = place.name
-        let lat = place.latitude
-        let lon = place.longitude
-        let addr = place.address
-        let postal = place.postalCode
-        let city = place.city
-        let hours = place.openingHours
-        let visitedAt = visit.visitedAt
-        let commentVal = comment.isEmpty ? nil : comment
-        Task.detached {
-            await VisitSyncService.push(
-                osmNodeID: osmID, name: placeName, latitude: lat, longitude: lon,
-                address: addr, postalCode: postal, city: city, openingHours: hours,
-                visitedAt: visitedAt, comment: commentVal
-            )
+        let body = VisitSyncService.CreateVisitBody(
+            visitedAt: visit.visitedAt,
+            comment: comment.isEmpty ? nil : comment,
+            foodType: food.id,
+            name: place.name,
+            latitude: place.latitude,
+            longitude: place.longitude,
+            address: place.address,
+            postalCode: place.postalCode,
+            city: place.city,
+            openingHours: place.openingHours
+        )
+        Task {
+            if !await VisitSyncService.push(osmNodeID: osmID, body: body) {
+                SyncQueueService.enqueueVisit(osmNodeID: osmID, body: body, context: modelContext)
+            }
         }
 
         // Confetti!

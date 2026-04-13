@@ -15,6 +15,7 @@ struct VisitController: RouteCollection {
     struct CreateBody: Content {
         let visitedAt: Date
         let comment: String?
+        let foodType: String?
         let name: String
         let latitude: Double
         let longitude: Double
@@ -54,6 +55,12 @@ struct VisitController: RouteCollection {
             comment: body.comment
         )
         try await visit.save(on: req.db)
+
+        // Set live status for 2 hours
+        user.$livePlace.id = placeID
+        user.liveStatusUntil = Date().addingTimeInterval(2 * 60 * 60)
+        user.liveFoodType = body.foodType
+        try await user.save(on: req.db)
 
         return visit.toDTO(userName: user.displayName, placeID: placeID, placeName: place.name)
     }

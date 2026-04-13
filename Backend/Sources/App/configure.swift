@@ -33,6 +33,7 @@ func configure(_ app: Application) async throws {
     app.migrations.add(CreateReview())
     app.migrations.add(CreateVisit())
     app.migrations.add(AddDimensionRatings())
+    app.migrations.add(AddLiveStatus())
 
     try await app.autoMigrate()
     try routes(app)

@@ -1,9 +1,9 @@
 import Foundation
 
 /// Pushes locally-created reviews to the backend.
-/// Fire-and-forget: silently skips if not authenticated, logs other errors to console.
+/// Returns false if the request failed and the operation should be queued for retry.
 enum ReviewSyncService {
-    struct UpsertReviewBody: Encodable {
+    struct UpsertReviewBody: Codable {
         let rating: Int
         let sauceRating: Int?
         let fleischRating: Int?
@@ -23,46 +23,20 @@ enum ReviewSyncService {
         let id: UUID
     }
 
-    static func push(
-        osmNodeID: Int64,
-        name: String,
-        latitude: Double,
-        longitude: Double,
-        address: String?,
-        postalCode: String?,
-        city: String?,
-        openingHours: String?,
-        rating: Int,
-        sauceRating: Int?,
-        fleischRating: Int?,
-        brotRating: Int?,
-        text: String?,
-        specialNote: String?
-    ) async {
-        let body = UpsertReviewBody(
-            rating: rating,
-            sauceRating: sauceRating,
-            fleischRating: fleischRating,
-            brotRating: brotRating,
-            text: text,
-            specialNote: specialNote,
-            name: name,
-            latitude: latitude,
-            longitude: longitude,
-            address: address,
-            postalCode: postalCode,
-            city: city,
-            openingHours: openingHours
-        )
+    /// Returns true if succeeded or unauthorized (no queue needed), false if network failed (should queue).
+    @discardableResult
+    static func push(osmNodeID: Int64, body: UpsertReviewBody) async -> Bool {
         do {
             let _: ReviewResponse = try await APIClient.shared.post(
                 "places/by_osm/\(osmNodeID)/reviews",
                 body: body
             )
+            return true
         } catch APIError.unauthorized {
-            // Not signed in — local-only review is fine.
+            return true
         } catch {
             print("[ReviewSync] failed: \(error.localizedDescription)")
+            return false
         }
     }
 }

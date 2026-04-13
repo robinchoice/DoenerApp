@@ -217,22 +217,27 @@ struct ReviewSheet: View {
         updatePlaceRating()
         try? modelContext.save()
 
-        // Fire-and-forget backend sync
+        // Backend sync with queue fallback
         let osmID = place.osmNodeID
-        let placeName = place.name
-        let lat = place.latitude
-        let lon = place.longitude
-        let addr = place.address
-        let postal = place.postalCode
-        let city = place.city
-        let hours = place.openingHours
-        Task.detached {
-            await ReviewSyncService.push(
-                osmNodeID: osmID, name: placeName, latitude: lat, longitude: lon,
-                address: addr, postalCode: postal, city: city, openingHours: hours,
-                rating: finalRating, sauceRating: sauce, fleischRating: fleisch,
-                brotRating: brot, text: text.isEmpty ? nil : text, specialNote: special
-            )
+        let body = ReviewSyncService.UpsertReviewBody(
+            rating: finalRating,
+            sauceRating: sauce,
+            fleischRating: fleisch,
+            brotRating: brot,
+            text: text.isEmpty ? nil : text,
+            specialNote: special,
+            name: place.name,
+            latitude: place.latitude,
+            longitude: place.longitude,
+            address: place.address,
+            postalCode: place.postalCode,
+            city: place.city,
+            openingHours: place.openingHours
+        )
+        Task {
+            if !await ReviewSyncService.push(osmNodeID: osmID, body: body) {
+                SyncQueueService.enqueueReview(osmNodeID: osmID, body: body, context: modelContext)
+            }
         }
 
         dismiss()

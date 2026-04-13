@@ -23,6 +23,15 @@ final class User: Model, Content, @unchecked Sendable {
     @Timestamp(key: "created_at", on: .create)
     var createdAt: Date?
 
+    @OptionalParent(key: "live_place_id")
+    var livePlace: DoenerPlace?
+
+    @OptionalField(key: "live_status_until")
+    var liveStatusUntil: Date?
+
+    @OptionalField(key: "live_food_type")
+    var liveFoodType: String?
+
     init() {}
 
     init(id: UUID? = nil, appleUserID: String, displayName: String, avatarURL: String? = nil, language: String = "de") {

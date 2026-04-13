@@ -279,6 +279,22 @@ public struct StampDTO: Codable, Sendable, Identifiable {
     }
 }
 
+// MARK: - Live Status
+
+public struct LiveStatusDTO: Codable, Sendable {
+    public let user: UserDTO
+    public let placeName: String
+    public let foodType: String?
+    public let until: Date
+
+    public init(user: UserDTO, placeName: String, foodType: String?, until: Date) {
+        self.user = user
+        self.placeName = placeName
+        self.foodType = foodType
+        self.until = until
+    }
+}
+
 // MARK: - Pagination
 
 public struct PaginatedResponse<T: Codable & Sendable>: Codable, Sendable {

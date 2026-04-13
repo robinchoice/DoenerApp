@@ -12,4 +12,5 @@ func routes(_ app: Application) throws {
     try api.register(collection: FriendsController())
     try api.register(collection: ReviewController())
     try api.register(collection: VisitController())
+    try api.register(collection: FeedController())
 }
