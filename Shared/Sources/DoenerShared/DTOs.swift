@@ -233,12 +233,14 @@ public struct FriendshipDTO: Codable, Sendable, Identifiable {
     public let id: UUID
     public let user: UserDTO
     public let status: FriendshipStatus
+    public let direction: FriendshipDirection
     public let createdAt: Date
 
-    public init(id: UUID, user: UserDTO, status: FriendshipStatus, createdAt: Date) {
+    public init(id: UUID, user: UserDTO, status: FriendshipStatus, direction: FriendshipDirection, createdAt: Date) {
         self.id = id
         self.user = user
         self.status = status
+        self.direction = direction
         self.createdAt = createdAt
     }
 }
@@ -247,6 +249,11 @@ public enum FriendshipStatus: String, Codable, Sendable {
     case pending
     case accepted
     case blocked
+}
+
+public enum FriendshipDirection: String, Codable, Sendable {
+    case incoming
+    case outgoing
 }
 
 // MARK: - Stamps

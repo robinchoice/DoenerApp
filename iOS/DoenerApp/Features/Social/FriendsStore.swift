@@ -16,10 +16,11 @@ final class FriendsStore {
     }
 
     var incomingPending: [FriendshipDTO] {
-        // Heuristic: pending where current user is addressee.
-        // Backend marks status only; we infer based on which side initiated.
-        // For UI we show all pending grouped together; the accept call only succeeds if I'm the addressee.
-        friendships.filter { $0.status == .pending }
+        friendships.filter { $0.status == .pending && $0.direction == .incoming }
+    }
+
+    var outgoingPending: [FriendshipDTO] {
+        friendships.filter { $0.status == .pending && $0.direction == .outgoing }
     }
 
     var accepted: [FriendshipDTO] {
@@ -95,7 +96,7 @@ final class FriendsStore {
                 displayName: f.user.displayName,
                 avatarURL: f.user.avatarURL,
                 status: f.status.rawValue,
-                direction: "unknown",
+                direction: f.direction.rawValue,
                 createdAt: f.createdAt
             )
             context.insert(cached)

@@ -28,10 +28,16 @@ enum FriendshipStatus: String, Codable, Sendable {
     case blocked
 }
 
+enum FriendshipDirection: String, Codable, Sendable {
+    case incoming
+    case outgoing
+}
+
 struct FriendshipDTO: Codable, Sendable, Identifiable, Equatable {
     let id: UUID
     let user: UserDTO
     let status: FriendshipStatus
+    let direction: FriendshipDirection
     let createdAt: Date
 }
 

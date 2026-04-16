@@ -88,11 +88,9 @@ struct ReviewController: RouteCollection {
             review = r
         }
 
-        // Update special note on place if provided
-        if let specialNote = body.specialNote {
-            place.specialNote = specialNote
-            try await place.save(on: req.db)
-        }
+        // Always update special note — nil means "clear"
+        place.specialNote = body.specialNote
+        try await place.save(on: req.db)
 
         // Recompute aggregate rating + count on the place
         try await DoenerPlace.recomputeRatingAggregates(placeID: placeID, on: req.db)

@@ -20,23 +20,23 @@ Konvention:
 
 ## Aktueller Stand
 
-<!-- Zuletzt aktualisiert: 2026-04-13 via /save -->
+<!-- Zuletzt aktualisiert: 2026-04-16 via /save -->
 
 **Sprint / Phase:** Sprint 3 — Launch-Readiness
 
 **Zuletzt implementiert:**
-- S3.1 Offline-Sync Queue (SyncQueueService, VisitSyncService, ReviewSyncService refactored)
-- S3.4 Freunde-Feed + Live-Status komplett (Backend FeedController + iOS FeedStore/FeedView)
-- Kanban migriert, BACKLOG.md ist nur noch historisch
+- Security-Fixes aus externem Audit: Friendship-Richtung (DTO + Backend + iOS), specialNote-Clearing, Compose-Defaults gehärtet
+- S3.8 "Apple JWT Signaturprüfung" als SECURITY-BLOCKER ins Kanban (To Do)
 
 **Als nächstes:**
+- S3.8 JWKS-Validierung implementieren (BLOCKER vor öffentlichem Hosting)
 - S3.2 Coolify-Container debuggen (`COOLIFY_SPAETZLES_TOKEN` aus `~/.secrets`)
-- S3.4 end-to-end testen (zwei Dev-Logins, Freundschaft, Feed prüfen)
 - S3.3 Google Maps Places API angehen
 
 **Offene Punkte:**
 - Apple Developer Account Approval ausstehend → TestFlight blockiert
 - Container auf VPS startet nicht trotz erfolgreichem CI/CD
+- DTO-Duplikation iOS/Shared noch nicht aufgelöst (auf späteren Sprint verschoben)
 
 ## Kanban
 

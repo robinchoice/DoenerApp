@@ -47,11 +47,13 @@ struct FriendsController: RouteCollection {
         let rows = asRequester + asAddressee
 
         return try rows.map { f in
-            let other = (try f.requester.requireID() == myID) ? f.addressee : f.requester
+            let isRequester = try f.requester.requireID() == myID
+            let other = isRequester ? f.addressee : f.requester
             return FriendshipDTO(
                 id: try f.requireID(),
                 user: other.toDTO(),
                 status: FriendshipStatus(rawValue: f.status.rawValue) ?? .pending,
+                direction: isRequester ? .outgoing : .incoming,
                 createdAt: f.createdAt ?? Date()
             )
         }
@@ -86,11 +88,13 @@ struct FriendsController: RouteCollection {
             .with(\.$addressee)
             .first()
         if let existing = existingForward ?? existingReverse {
-            let other = (try existing.requester.requireID() == myID) ? existing.addressee : existing.requester
+            let isRequester = try existing.requester.requireID() == myID
+            let other = isRequester ? existing.addressee : existing.requester
             return FriendshipDTO(
                 id: try existing.requireID(),
                 user: other.toDTO(),
                 status: FriendshipStatus(rawValue: existing.status.rawValue) ?? .pending,
+                direction: isRequester ? .outgoing : .incoming,
                 createdAt: existing.createdAt ?? Date()
             )
         }
@@ -102,6 +106,7 @@ struct FriendsController: RouteCollection {
             id: try f.requireID(),
             user: addressee.toDTO(),
             status: .pending,
+            direction: .outgoing,
             createdAt: f.createdAt ?? Date()
         )
     }
@@ -132,6 +137,7 @@ struct FriendsController: RouteCollection {
             id: try f.requireID(),
             user: f.requester.toDTO(),
             status: .accepted,
+            direction: .incoming,
             createdAt: f.createdAt ?? Date()
         )
     }

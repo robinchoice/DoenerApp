@@ -15,7 +15,7 @@ struct FriendsView: View {
                         HStack {
                             VStack(alignment: .leading) {
                                 Text(f.user.displayName).font(.body)
-                                Text("Pending").font(.caption).foregroundStyle(.secondary)
+                                Text("Möchte dich als Freund hinzufügen").font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
                             Button("Annehmen") {
@@ -23,6 +23,24 @@ struct FriendsView: View {
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.orange)
+                        }
+                    }
+                }
+            }
+
+            if !store.outgoingPending.isEmpty {
+                Section("Gesendete Anfragen") {
+                    ForEach(store.outgoingPending) { f in
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text(f.user.displayName).font(.body)
+                                Text("Ausstehend").font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Button("Zurückziehen", role: .destructive) {
+                                Task { await store.remove(f.id) }
+                            }
+                            .buttonStyle(.bordered)
                         }
                     }
                 }

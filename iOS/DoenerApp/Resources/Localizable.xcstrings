@@ -1,11 +1,24 @@
 {
   "sourceLanguage" : "de",
   "strings" : {
+    "" : {
+
+    },
     "—" : {
 
     },
     "(%lld)" : {
 
+    },
+    "%@ %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
     },
     "%lld" : {
 
@@ -301,6 +314,9 @@
         }
       }
     },
+    "Füge Freunde hinzu, um ihre Döner-Aktivitäten zu sehen." : {
+
+    },
     "Gemeldete Läden (%lld)" : {
 
     },
@@ -311,6 +327,9 @@
 
     },
     "Höchste Stufe erreicht!" : {
+
+    },
+    "isst gerade bei %@" : {
 
     },
     "Ja, machen" : {
@@ -326,6 +345,9 @@
           }
         }
       }
+    },
+    "Keine Aktivität" : {
+
     },
     "Kommentar (optional)" : {
 
@@ -376,6 +398,9 @@
 
     },
     "Manuell" : {
+
+    },
+    "Meine" : {
 
     },
     "Name (z.B. Erbil)" : {
