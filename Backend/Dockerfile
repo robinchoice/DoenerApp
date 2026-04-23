@@ -9,7 +9,7 @@ RUN mkdir -p Tests/AppTests && echo '@testable import App' > Tests/AppTests/Plac
 RUN swift build -c release --static-swift-stdlib && ls -la .build/release/App
 
 FROM ubuntu:22.04
-RUN apt-get update && apt-get install -y ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates tzdata libssl3 && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /build/Backend/.build/release/App .
 ENV TZ=Europe/Berlin
