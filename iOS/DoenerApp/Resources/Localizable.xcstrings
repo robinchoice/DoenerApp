@@ -130,6 +130,9 @@
     "Auf Default zurücksetzen" : {
 
     },
+    "Ausstehend" : {
+
+    },
     "Auto" : {
 
     },
@@ -323,6 +326,9 @@
     "Gesamt" : {
 
     },
+    "Gesendete Anfragen" : {
+
+    },
     "Hilft Robin, den Laden später zu finden." : {
 
     },
@@ -403,6 +409,9 @@
     "Meine" : {
 
     },
+    "Möchte dich als Freund hinzufügen" : {
+
+    },
     "Name (z.B. Erbil)" : {
 
     },
@@ -467,9 +476,6 @@
 
     },
     "OK" : {
-
-    },
-    "Pending" : {
 
     },
     "Profil" : {
@@ -663,6 +669,9 @@
 
     },
     "Weiter" : {
+
+    },
+    "Zurückziehen" : {
 
     }
   },
