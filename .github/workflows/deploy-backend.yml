@@ -42,5 +42,11 @@ jobs:
 
       - name: Deploy to Coolify
         run: |
-          curl -s "https://coolify.diespaetzles.lol/api/v1/deploy?uuid=${{ secrets.COOLIFY_APP_UUID }}&force=true" \
+          # Coolify auf den konkreten Commit-SHA-Tag setzen (umgeht den 'latest'-Image-Cache,
+          # der sonst das alte Image behält), dann force-deployen.
+          curl -sf -X PATCH "https://coolify.diespaetzles.lol/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"docker_registry_image_tag\": \"${{ github.sha }}\"}"
+          curl -sf "https://coolify.diespaetzles.lol/api/v1/deploy?uuid=${{ secrets.COOLIFY_APP_UUID }}&force=true" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"

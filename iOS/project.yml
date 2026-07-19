@@ -35,6 +35,7 @@ targets:
         INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Döner App braucht deinen Standort, um Döner-Läden in der Nähe anzuzeigen."
         INFOPLIST_KEY_CFBundleDisplayName: "Döner App"
         INFOPLIST_KEY_NSAppTransportSecurity: "{NSAllowsLocalNetworking = YES;}"
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: 1
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
