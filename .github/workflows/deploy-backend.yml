@@ -14,7 +14,8 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    # Server ist ARM64 (Hetzner) — nativ auf ARM-Runner bauen, sonst "exec format error"
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write
@@ -33,12 +34,13 @@ jobs:
           context: .
           file: Backend/Dockerfile
           push: true
+          platforms: linux/arm64
+          provenance: false
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Deploy to Coolify
         run: |
-          curl -s -X POST \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
-            https://coolify.diespaetzles.lol/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}/restart
+          curl -s "https://coolify.diespaetzles.lol/api/v1/deploy?uuid=${{ secrets.COOLIFY_APP_UUID }}&force=true" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"
