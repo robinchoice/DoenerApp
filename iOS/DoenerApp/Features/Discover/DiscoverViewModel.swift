@@ -16,7 +16,7 @@ final class DiscoverViewModel {
 
     struct DiscoverPlace: Identifiable, Decodable {
         let id: UUID
-        let osmNodeID: Int64
+        let placeID: String
         let name: String
         let latitude: Double
         let longitude: Double
@@ -104,9 +104,9 @@ final class DiscoverViewModel {
     /// Upsert a backend DiscoverPlace into SwiftData so PlaceDetailView can use it
     func cachedPlace(for dp: DiscoverPlace) -> CachedPlace? {
         guard let modelContext else { return nil }
-        let osmID = dp.osmNodeID
+        let placeID = dp.placeID
         let descriptor = FetchDescriptor<CachedPlace>(
-            predicate: #Predicate { $0.osmNodeID == osmID }
+            predicate: #Predicate { $0.placeID == placeID }
         )
         if let existing = try? modelContext.fetch(descriptor).first {
             existing.avgRating = dp.avgRating
@@ -116,7 +116,7 @@ final class DiscoverViewModel {
             return existing
         }
         let place = CachedPlace(
-            osmNodeID: dp.osmNodeID,
+            placeID: dp.placeID,
             name: dp.name,
             latitude: dp.latitude,
             longitude: dp.longitude,

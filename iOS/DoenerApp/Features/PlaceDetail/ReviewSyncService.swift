@@ -25,10 +25,10 @@ enum ReviewSyncService {
 
     /// Returns true if succeeded or unauthorized (no queue needed), false if network failed (should queue).
     @discardableResult
-    static func push(osmNodeID: Int64, body: UpsertReviewBody) async -> Bool {
+    static func push(placeID: String, body: UpsertReviewBody) async -> Bool {
         do {
             let _: ReviewResponse = try await APIClient.shared.post(
-                "places/by_osm/\(osmNodeID)/reviews",
+                "places/\(placeID)/reviews",
                 body: body
             )
             return true

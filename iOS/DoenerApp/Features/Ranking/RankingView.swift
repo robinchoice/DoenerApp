@@ -63,16 +63,16 @@ struct RankingView: View {
               let reviews = try? modelContext.fetch(reviewDescriptor),
               let places = try? modelContext.fetch(placeDescriptor) else { return }
 
-        let visitsByPlace = Dictionary(grouping: visits, by: \.placeOsmNodeID)
-        let reviewsByPlace = Dictionary(grouping: reviews, by: \.placeOsmNodeID)
+        let visitsByPlace = Dictionary(grouping: visits, by: \.placeID)
+        let reviewsByPlace = Dictionary(grouping: reviews, by: \.placeID)
 
         // Only show places the user has interacted with
-        let interactedOsmIDs = Set(visitsByPlace.keys).union(reviewsByPlace.keys)
+        let interactedPlaceIDs = Set(visitsByPlace.keys).union(reviewsByPlace.keys)
 
         var ranked: [RankedPlace] = places.compactMap { place in
-            guard interactedOsmIDs.contains(place.osmNodeID) else { return nil }
-            let placeVisits = visitsByPlace[place.osmNodeID] ?? []
-            let placeReviews = reviewsByPlace[place.osmNodeID] ?? []
+            guard interactedPlaceIDs.contains(place.placeID) else { return nil }
+            let placeVisits = visitsByPlace[place.placeID] ?? []
+            let placeReviews = reviewsByPlace[place.placeID] ?? []
             let avgRating = placeReviews.isEmpty ? nil : Double(placeReviews.reduce(0) { $0 + $1.rating }) / Double(placeReviews.count)
             let lastVisit = placeVisits.map(\.visitedAt).max()
 

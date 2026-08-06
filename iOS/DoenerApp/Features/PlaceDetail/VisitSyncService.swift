@@ -22,10 +22,10 @@ enum VisitSyncService {
 
     /// Returns true if succeeded or unauthorized (no queue needed), false if network failed (should queue).
     @discardableResult
-    static func push(osmNodeID: Int64, body: CreateVisitBody) async -> Bool {
+    static func push(placeID: String, body: CreateVisitBody) async -> Bool {
         do {
             let _: VisitResponse = try await APIClient.shared.post(
-                "places/by_osm/\(osmNodeID)/visits",
+                "places/\(placeID)/visits",
                 body: body
             )
             return true

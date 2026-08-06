@@ -23,7 +23,7 @@ struct MapView: View {
 
                     ForEach(filteredPlaces) { place in
                         Annotation(place.name, coordinate: place.coordinate) {
-                            DoenerPinView(place: place, visitCount: viewModel.visitCounts[place.osmNodeID] ?? 0)
+                            DoenerPinView(place: place, visitCount: viewModel.visitCounts[place.placeID] ?? 0)
                         }
                         .tag(place)
                     }
@@ -244,3 +244,4 @@ struct ErrorPill: View {
     MapView()
         .modelContainer(for: CachedPlace.self, inMemory: true)
 }
+

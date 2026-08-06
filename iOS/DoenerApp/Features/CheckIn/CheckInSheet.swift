@@ -79,7 +79,7 @@ struct CheckInSheet: View {
 
         // Save visit
         let visit = Visit(
-            placeOsmNodeID: place.osmNodeID,
+            placeID: place.placeID,
             placeName: place.name,
             visitedAt: Date(),
             comment: comment.isEmpty ? nil : comment,
@@ -89,7 +89,7 @@ struct CheckInSheet: View {
         try? modelContext.save()
 
         // Backend sync
-        let osmID = place.osmNodeID
+        let placeID = place.placeID
         let body = VisitSyncService.CreateVisitBody(
             visitedAt: visit.visitedAt,
             comment: comment.isEmpty ? nil : comment,
@@ -103,9 +103,9 @@ struct CheckInSheet: View {
             openingHours: place.openingHours
         )
         Task {
-            let ok = await VisitSyncService.push(osmNodeID: osmID, body: body)
+            let ok = await VisitSyncService.push(placeID: placeID, body: body)
             if !ok {
-                SyncQueueService.enqueueVisit(osmNodeID: osmID, body: body, context: modelContext)
+                SyncQueueService.enqueueVisit(placeID: placeID, body: body, context: modelContext)
             }
         }
 

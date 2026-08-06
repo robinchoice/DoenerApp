@@ -4,7 +4,7 @@ import MapKit
 
 @Model
 final class CachedPlace {
-    @Attribute(.unique) var osmNodeID: Int64
+    @Attribute(.unique) var placeID: String
     var name: String
     var latitude: Double
     var longitude: Double
@@ -26,10 +26,10 @@ final class CachedPlace {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 
-    init(osmNodeID: Int64, name: String, latitude: Double, longitude: Double,
+    init(placeID: String, name: String, latitude: Double, longitude: Double,
          address: String? = nil, postalCode: String? = nil, city: String? = nil,
          openingHours: String? = nil) {
-        self.osmNodeID = osmNodeID
+        self.placeID = placeID
         self.name = name
         self.latitude = latitude
         self.longitude = longitude
@@ -72,15 +72,15 @@ final class CachedRegion {
 
 @Model
 final class Visit {
-    var placeOsmNodeID: Int64
+    var placeID: String
     var placeName: String
     var visitedAt: Date
     var comment: String?
     var foodType: String?
 
-    init(placeOsmNodeID: Int64, placeName: String, visitedAt: Date = Date(),
+    init(placeID: String, placeName: String, visitedAt: Date = Date(),
          comment: String? = nil, foodType: String? = nil) {
-        self.placeOsmNodeID = placeOsmNodeID
+        self.placeID = placeID
         self.placeName = placeName
         self.visitedAt = visitedAt
         self.comment = comment
@@ -90,7 +90,7 @@ final class Visit {
 
 @Model
 final class Review {
-    var placeOsmNodeID: Int64
+    var placeID: String
     var placeName: String
     var rating: Int // 1-5
     var sauceRating: Int?
@@ -100,10 +100,10 @@ final class Review {
     var createdAt: Date
     var updatedAt: Date
 
-    init(placeOsmNodeID: Int64, placeName: String, rating: Int,
+    init(placeID: String, placeName: String, rating: Int,
          sauceRating: Int? = nil, fleischRating: Int? = nil, brotRating: Int? = nil,
          text: String? = nil) {
-        self.placeOsmNodeID = placeOsmNodeID
+        self.placeID = placeID
         self.placeName = placeName
         self.rating = rating
         self.sauceRating = sauceRating

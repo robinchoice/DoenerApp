@@ -182,18 +182,18 @@ struct PlaceDetailView: View {
     }
 
     private func loadVisits() {
-        let osmID = place.osmNodeID
+        let placeID = place.placeID
         let descriptor = FetchDescriptor<Visit>(
-            predicate: #Predicate { $0.placeOsmNodeID == osmID },
+            predicate: #Predicate { $0.placeID == placeID },
             sortBy: [SortDescriptor(\.visitedAt, order: .reverse)]
         )
         visits = (try? modelContext.fetch(descriptor)) ?? []
     }
 
     private func loadReviews() {
-        let osmID = place.osmNodeID
+        let placeID = place.placeID
         let descriptor = FetchDescriptor<Review>(
-            predicate: #Predicate { $0.placeOsmNodeID == osmID },
+            predicate: #Predicate { $0.placeID == placeID },
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
         reviews = (try? modelContext.fetch(descriptor)) ?? []
@@ -206,7 +206,7 @@ struct PlaceDetailView: View {
         }
         do {
             let response: SummaryResponse = try await APIClient.shared.get(
-                "places/by_osm/\(place.osmNodeID)/summary"
+                "places/\(place.placeID)/summary"
             )
             if response.reviewCount > 0 {
                 summaryText = response.summaryText
@@ -438,7 +438,7 @@ struct ActionButton: View {
 
 #Preview {
     PlaceDetailView(place: CachedPlace(
-        osmNodeID: 12345,
+        placeID: "ChIJ_preview12345",
         name: "Mustafa's Gemüse Kebap",
         latitude: 52.5069,
         longitude: 13.3878,

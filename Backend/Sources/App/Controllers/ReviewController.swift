@@ -6,17 +6,17 @@ struct ReviewController: RouteCollection {
     func boot(routes: any RoutesBuilder) throws {
         let protected = routes.grouped(AuthMiddleware())
 
-        // POST /api/v1/places/by_osm/:osmNodeID/reviews — upsert place + review
-        protected.post("places", "by_osm", ":osmNodeID", "reviews", use: upsertReview)
+        // POST /api/v1/places/:placeID/reviews — upsert place + review
+        protected.post("places", ":placeID", "reviews", use: upsertReview)
 
-        // GET /api/v1/places/by_osm/:osmNodeID/reviews — public list of reviews for a place
-        routes.get("places", "by_osm", ":osmNodeID", "reviews", use: listReviewsByOSM)
+        // GET /api/v1/places/:placeID/reviews — public list of reviews for a place
+        routes.get("places", ":placeID", "reviews", use: listReviews)
 
-        // GET /api/v1/places/by_osm/:osmNodeID/summary — community summary
-        routes.get("places", "by_osm", ":osmNodeID", "summary", use: placeSummary)
+        // GET /api/v1/places/:placeID/summary — community summary
+        routes.get("places", ":placeID", "summary", use: placeSummary)
     }
 
-    /// Body for review upsert. Includes the OSM place metadata so the backend
+    /// Body for review upsert. Includes the place metadata so the backend
     /// can lazily create the DoenerPlace row if it doesn't exist yet.
     struct UpsertBody: Content {
         let rating: Int
@@ -38,9 +38,8 @@ struct ReviewController: RouteCollection {
     @Sendable
     func upsertReview(req: Request) async throws -> ReviewDTO {
         let user = try req.auth.require(User.self)
-        guard let osmIDString = req.parameters.get("osmNodeID"),
-              let osmNodeID = Int64(osmIDString) else {
-            throw Abort(.badRequest, reason: "osmNodeID must be Int64")
+        guard let placeID = req.parameters.get("placeID") else {
+            throw Abort(.badRequest, reason: "placeID required")
         }
         let body = try req.content.decode(UpsertBody.self)
         guard (1...5).contains(body.rating) else {
@@ -54,7 +53,7 @@ struct ReviewController: RouteCollection {
 
         // Upsert the place
         let place = try await DoenerPlace.upsert(
-            osmNodeID: osmNodeID,
+            placeID: placeID,
             name: body.name,
             latitude: body.latitude,
             longitude: body.longitude,
@@ -64,14 +63,14 @@ struct ReviewController: RouteCollection {
             openingHours: body.openingHours,
             on: req.db
         )
-        let placeID = try place.requireID()
+        let doenerPlaceID = try place.requireID()
         let userID = try user.requireID()
 
         // Upsert the review (one per user-place)
         let review: Review
         if let existing = try await Review.query(on: req.db)
             .filter(\.$user.$id == userID)
-            .filter(\.$place.$id == placeID)
+            .filter(\.$place.$id == doenerPlaceID)
             .first() {
             existing.rating = body.rating
             existing.sauceRating = body.sauceRating
@@ -81,7 +80,7 @@ struct ReviewController: RouteCollection {
             try await existing.save(on: req.db)
             review = existing
         } else {
-            let r = Review(userID: userID, placeID: placeID, rating: body.rating,
+            let r = Review(userID: userID, placeID: doenerPlaceID, rating: body.rating,
                            sauceRating: body.sauceRating, fleischRating: body.fleischRating,
                            brotRating: body.brotRating, text: body.text)
             try await r.save(on: req.db)
@@ -93,49 +92,47 @@ struct ReviewController: RouteCollection {
         try await place.save(on: req.db)
 
         // Recompute aggregate rating + count on the place
-        try await DoenerPlace.recomputeRatingAggregates(placeID: placeID, on: req.db)
+        try await DoenerPlace.recomputeRatingAggregates(placeID: doenerPlaceID, on: req.db)
 
-        return review.toDTO(userName: user.displayName, placeID: placeID)
+        return review.toDTO(userName: user.displayName, placeID: doenerPlaceID)
     }
 
     @Sendable
-    func listReviewsByOSM(req: Request) async throws -> [ReviewDTO] {
-        guard let osmIDString = req.parameters.get("osmNodeID"),
-              let osmNodeID = Int64(osmIDString) else {
-            throw Abort(.badRequest, reason: "osmNodeID must be Int64")
+    func listReviews(req: Request) async throws -> [ReviewDTO] {
+        guard let placeID = req.parameters.get("placeID") else {
+            throw Abort(.badRequest, reason: "placeID required")
         }
         guard let place = try await DoenerPlace.query(on: req.db)
-            .filter(\.$osmNodeID == osmNodeID)
+            .filter(\.$placeID == placeID)
             .first() else {
             return []
         }
-        let placeID = try place.requireID()
+        let doenerPlaceID = try place.requireID()
 
         let reviews = try await Review.query(on: req.db)
-            .filter(\.$place.$id == placeID)
+            .filter(\.$place.$id == doenerPlaceID)
             .sort(\.$createdAt, .descending)
             .with(\.$user)
             .all()
 
-        return reviews.map { $0.toDTO(userName: $0.user.displayName, placeID: placeID) }
+        return reviews.map { $0.toDTO(userName: $0.user.displayName, placeID: doenerPlaceID) }
     }
 
     @Sendable
     func placeSummary(req: Request) async throws -> PlaceSummaryDTO {
-        guard let osmIDString = req.parameters.get("osmNodeID"),
-              let osmNodeID = Int64(osmIDString) else {
-            throw Abort(.badRequest, reason: "osmNodeID must be Int64")
+        guard let placeID = req.parameters.get("placeID") else {
+            throw Abort(.badRequest, reason: "placeID required")
         }
         guard let place = try await DoenerPlace.query(on: req.db)
-            .filter(\.$osmNodeID == osmNodeID)
+            .filter(\.$placeID == placeID)
             .first() else {
             return PlaceSummaryDTO(reviewCount: 0, avgRating: nil, avgSauceRating: nil,
                                    avgFleischRating: nil, avgBrotRating: nil,
                                    topDimension: nil, summaryText: "Noch keine Bewertungen.")
         }
-        let placeID = try place.requireID()
+        let doenerPlaceID = try place.requireID()
         let reviews = try await Review.query(on: req.db)
-            .filter(\.$place.$id == placeID)
+            .filter(\.$place.$id == doenerPlaceID)
             .all()
 
         guard !reviews.isEmpty else {
@@ -222,10 +219,10 @@ extension Review {
 }
 
 extension DoenerPlace {
-    /// Find an existing place by OSM node ID, or create one. Updates non-id fields
-    /// when found so we keep the cached metadata fresh.
+    /// Find an existing place by Google Place ID, or create one. Updates
+    /// non-id fields when found so we keep the cached metadata fresh.
     static func upsert(
-        osmNodeID: Int64,
+        placeID: String,
         name: String,
         latitude: Double,
         longitude: Double,
@@ -236,7 +233,7 @@ extension DoenerPlace {
         on db: any Database
     ) async throws -> DoenerPlace {
         if let existing = try await DoenerPlace.query(on: db)
-            .filter(\.$osmNodeID == osmNodeID)
+            .filter(\.$placeID == placeID)
             .first() {
             existing.name = name
             existing.latitude = latitude
@@ -249,7 +246,7 @@ extension DoenerPlace {
             return existing
         }
         let place = DoenerPlace(
-            osmNodeID: osmNodeID,
+            placeID: placeID,
             name: name,
             latitude: latitude,
             longitude: longitude,

@@ -12,7 +12,7 @@ struct ContentView: View {
                 RankingView()
                     .tag(1)
 
-                DiscoverView()
+                DiscoverView(selectedTab: $selectedTab)
                     .tag(2)
 
                 MapView()

@@ -8,8 +8,8 @@ final class DoenerPlace: Model, Content, @unchecked Sendable {
     @ID(key: .id)
     var id: UUID?
 
-    @Field(key: "osm_node_id")
-    var osmNodeID: Int64
+    @Field(key: "google_place_id")
+    var placeID: String
 
     @Field(key: "name")
     var name: String
@@ -49,11 +49,11 @@ final class DoenerPlace: Model, Content, @unchecked Sendable {
 
     init() {}
 
-    init(id: UUID? = nil, osmNodeID: Int64, name: String, latitude: Double, longitude: Double,
+    init(id: UUID? = nil, placeID: String, name: String, latitude: Double, longitude: Double,
          address: String? = nil, postalCode: String? = nil, city: String? = nil,
          openingHours: String? = nil) {
         self.id = id
-        self.osmNodeID = osmNodeID
+        self.placeID = placeID
         self.name = name
         self.latitude = latitude
         self.longitude = longitude

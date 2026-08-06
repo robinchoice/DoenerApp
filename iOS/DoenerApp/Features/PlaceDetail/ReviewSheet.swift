@@ -202,7 +202,7 @@ struct ReviewSheet: View {
             existingReview.updatedAt = Date()
         } else {
             let review = Review(
-                placeOsmNodeID: place.osmNodeID,
+                placeID: place.placeID,
                 placeName: place.name,
                 rating: finalRating,
                 sauceRating: sauce,
@@ -218,7 +218,7 @@ struct ReviewSheet: View {
         try? modelContext.save()
 
         // Backend sync with queue fallback
-        let osmID = place.osmNodeID
+        let placeID = place.placeID
         let body = ReviewSyncService.UpsertReviewBody(
             rating: finalRating,
             sauceRating: sauce,
@@ -235,9 +235,9 @@ struct ReviewSheet: View {
             openingHours: place.openingHours
         )
         Task {
-            let ok = await ReviewSyncService.push(osmNodeID: osmID, body: body)
+            let ok = await ReviewSyncService.push(placeID: placeID, body: body)
             if !ok {
-                SyncQueueService.enqueueReview(osmNodeID: osmID, body: body, context: modelContext)
+                SyncQueueService.enqueueReview(placeID: placeID, body: body, context: modelContext)
             }
         }
 
@@ -245,9 +245,9 @@ struct ReviewSheet: View {
     }
 
     private func updatePlaceRating() {
-        let osmID = place.osmNodeID
+        let placeID = place.placeID
         let descriptor = FetchDescriptor<Review>(
-            predicate: #Predicate { $0.placeOsmNodeID == osmID }
+            predicate: #Predicate { $0.placeID == placeID }
         )
         guard let reviews = try? modelContext.fetch(descriptor) else { return }
         place.reviewCount = reviews.count

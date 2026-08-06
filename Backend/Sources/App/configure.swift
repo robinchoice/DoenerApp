@@ -34,6 +34,8 @@ func configure(_ app: Application) async throws {
     app.migrations.add(CreateVisit())
     app.migrations.add(AddDimensionRatings())
     app.migrations.add(AddLiveStatus())
+    app.migrations.add(CreateFeedback())
+    app.migrations.add(AddGooglePlaceID())
 
     try await app.autoMigrate()
     try routes(app)

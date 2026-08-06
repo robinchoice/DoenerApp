@@ -150,8 +150,8 @@ struct ProfileView: View {
         let reviews = (try? modelContext.fetch(reviewDescriptor)) ?? []
         let places = (try? modelContext.fetch(placeDescriptor)) ?? []
 
-        let uniqueOsmIDs = Set(visits.map(\.placeOsmNodeID))
-        let visitsByPlace = Dictionary(grouping: visits, by: \.placeOsmNodeID)
+        let uniquePlaceIDs = Set(visits.map(\.placeID))
+        let visitsByPlace = Dictionary(grouping: visits, by: \.placeID)
         let maxVisits = visitsByPlace.values.map(\.count).max() ?? 0
 
         // Check for night visits (after 22:00)
@@ -160,11 +160,11 @@ struct ProfileView: View {
 
         // Count unique visited places per city
         let placesByID = Dictionary(uniqueKeysWithValues: places.compactMap { p in
-            (p.osmNodeID, p)
+            (p.placeID, p)
         })
         var cityCounts: [String: Int] = [:]
-        for osmID in uniqueOsmIDs {
-            if let city = placesByID[osmID]?.city, !city.isEmpty {
+        for placeID in uniquePlaceIDs {
+            if let city = placesByID[placeID]?.city, !city.isEmpty {
                 cityCounts[city, default: 0] += 1
             }
         }
@@ -182,7 +182,7 @@ struct ProfileView: View {
         stats = ProfileStats(
             totalVisits: visits.count,
             totalReviews: reviews.count,
-            uniquePlaces: uniqueOsmIDs.count,
+            uniquePlaces: uniquePlaceIDs.count,
             memberSince: visits.map(\.visitedAt).min() ?? Date(),
             maxVisitsToSamePlace: maxVisits,
             hasNightVisit: hasNight,

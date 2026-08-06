@@ -26,7 +26,6 @@
 		6D73210CABB99A30221EB9FA /* ReviewSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA5398887414CB146DB01E0 /* ReviewSyncService.swift */; };
 		6DF3BCB12C8812C8A9D597A5 /* FeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B13A0E8FA377EA9856E2CE52 /* FeedView.swift */; };
 		7605D0897F3ABB090E8C8C36 /* DiscoverViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE5D50E4661CDAECEE8287C4 /* DiscoverViewModel.swift */; };
-		88D7FB572BF4B160F2524791 /* OverpassClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CA5A3BA2A7CF374E3E9BDCA /* OverpassClient.swift */; };
 		8EB97BA59CC6F2CC5C2695AA /* RotaryPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87AF49632EFC414FACCD336 /* RotaryPicker.swift */; };
 		9254253FD0780F3A6F01CDC0 /* AuthStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3869697F3AFF860B719B765 /* AuthStore.swift */; };
 		93418B4D5FB60AA2121395ED /* DoenerAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4E8D444215686BBD8323EFC /* DoenerAppApp.swift */; };
@@ -46,6 +45,7 @@
 		E3D646422238259D65119355 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = EEE9D0E379BC0D703A76F6F3 /* Localizable.xcstrings */; };
 		E458455416FAA136BFC8A1EF /* MapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAF0BFBBCAC868CDB1C21996 /* MapViewModel.swift */; };
 		E887A7B416688679B9712FE3 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC6C6AA4DFE3E20CEBB4B67A /* ProfileView.swift */; };
+		F538FB23B2344A201A044860 /* FeedbackSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B73D05A0D4F128BC06CAA94 /* FeedbackSheet.swift */; };
 		F8AD4453ABD62C22678BA73A /* SignInView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5126A6968EF79B62B2B7C74E /* SignInView.swift */; };
 /* End PBXBuildFile section */
 
@@ -77,8 +77,8 @@
 		6F5E8766A566CCDADDB32968 /* DoenerAppTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoenerAppTests.swift; sourceTree = "<group>"; };
 		72AFFEB33B175726883647F3 /* DoenerAppTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DoenerAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7328AC3034B5B49E8B75FF50 /* DoenerApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DoenerApp.entitlements; sourceTree = "<group>"; };
-		7CA5A3BA2A7CF374E3E9BDCA /* OverpassClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OverpassClient.swift; sourceTree = "<group>"; };
 		875F5F3D859C8B62CA58BDE5 /* FriendsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsStore.swift; sourceTree = "<group>"; };
+		8B73D05A0D4F128BC06CAA94 /* FeedbackSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackSheet.swift; sourceTree = "<group>"; };
 		8DBA9800E698C7F45DC03097 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		90252452BA293B128E3C2D2F /* FriendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsView.swift; sourceTree = "<group>"; };
 		9088828AC7A54163D4CFEC73 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -141,14 +141,6 @@
 			path = DoenerApp;
 			sourceTree = "<group>";
 		};
-		34D81E9691E3C001A1351D1D /* Overpass */ = {
-			isa = PBXGroup;
-			children = (
-				7CA5A3BA2A7CF374E3E9BDCA /* OverpassClient.swift */,
-			);
-			path = Overpass;
-			sourceTree = "<group>";
-		};
 		3ECF943412861D43458DAA69 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
@@ -200,7 +192,6 @@
 				8FDA01C9C687EE5EF08411F1 /* Location */,
 				76B9CAABDE10887A00FD6C66 /* Models */,
 				096B511BF7C4CB49A3188E1A /* Network */,
-				34D81E9691E3C001A1351D1D /* Overpass */,
 				C4F4C2E1F88AF214A57E3416 /* Persistence */,
 				4A8F430084D487204BD4A97E /* UI */,
 			);
@@ -214,6 +205,14 @@
 				C87AF49632EFC414FACCD336 /* RotaryPicker.swift */,
 			);
 			path = CheckIn;
+			sourceTree = "<group>";
+		};
+		731D0CF2FB6CD51C7B1D8E90 /* Feedback */ = {
+			isa = PBXGroup;
+			children = (
+				8B73D05A0D4F128BC06CAA94 /* FeedbackSheet.swift */,
+			);
+			path = Feedback;
 			sourceTree = "<group>";
 		};
 		76B9CAABDE10887A00FD6C66 /* Models */ = {
@@ -256,6 +255,7 @@
 				64775DE022683C14CA3C16E9 /* CheckIn */,
 				BCC96771E7CBCBEED6EA4809 /* Discover */,
 				D749E16CCA4B53634A4C6A18 /* Feed */,
+				731D0CF2FB6CD51C7B1D8E90 /* Feedback */,
 				B85CC045BBE01E24B50254E2 /* Map */,
 				7FE229484A6E8CB62FC5A0C4 /* Onboarding */,
 				B370BE7E6AF6F01FBAA475D9 /* PlaceDetail */,
@@ -467,6 +467,7 @@
 				35147EFAD3227CA79F9265EF /* DoenerRatingView.swift in Sources */,
 				4F28932FBC13F1C064153EDA /* FeedStore.swift in Sources */,
 				6DF3BCB12C8812C8A9D597A5 /* FeedView.swift in Sources */,
+				F538FB23B2344A201A044860 /* FeedbackSheet.swift in Sources */,
 				4E22684154FAD0FC7865DB4A /* FoodStatsView.swift in Sources */,
 				18AB0C0702D9EBA928A49D46 /* FriendsStore.swift in Sources */,
 				D310D4D18D1A548921F99E83 /* FriendsView.swift in Sources */,
@@ -475,7 +476,6 @@
 				E22F28347FDFF47A61124B00 /* MapView.swift in Sources */,
 				E458455416FAA136BFC8A1EF /* MapViewModel.swift in Sources */,
 				D72AC28DC8BA08F9506CC97A /* NoteSheet.swift in Sources */,
-				88D7FB572BF4B160F2524791 /* OverpassClient.swift in Sources */,
 				BDAF187880731858F6F0C6F6 /* PlaceDetailView.swift in Sources */,
 				E887A7B416688679B9712FE3 /* ProfileView.swift in Sources */,
 				10E88D192879927DABC463FC /* RankingView.swift in Sources */,
@@ -598,6 +598,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = DoenerApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Döner App";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSAppTransportSecurity = "{NSAllowsLocalNetworking = YES;}";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Döner App braucht deinen Standort, um Döner-Läden in der Nähe anzuzeigen.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -710,6 +711,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = DoenerApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Döner App";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSAppTransportSecurity = "{NSAllowsLocalNetworking = YES;}";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Döner App braucht deinen Standort, um Döner-Läden in der Nähe anzuzeigen.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

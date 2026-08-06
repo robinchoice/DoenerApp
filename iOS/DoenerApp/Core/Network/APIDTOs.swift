@@ -63,7 +63,7 @@ struct FeedItem: Codable, Sendable, Identifiable {
     struct PlaceInfo: Codable, Sendable {
         let id: UUID
         let name: String
-        let osmNodeID: Int64
+        let placeID: String
         let latitude: Double
         let longitude: Double
         let avgRating: Double?
@@ -99,4 +99,19 @@ struct LiveStatusDTO: Codable, Sendable {
     let placeName: String
     let foodType: String?
     let until: Date
+}
+
+// MARK: - Feedback
+
+struct CreateFeedbackRequest: Codable, Sendable {
+    let message: String
+    let screenshotBase64: String?
+    let appVersion: String?
+    let buildNumber: String?
+}
+
+struct FeedbackDTO: Codable, Sendable, Identifiable {
+    let id: UUID
+    let message: String
+    let createdAt: Date
 }

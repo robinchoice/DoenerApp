@@ -273,7 +273,7 @@ struct DoenerWrappedView: View {
         wrappedData = WrappedData(
             totalVisits: visits.count,
             totalReviews: reviews.count,
-            uniquePlaces: Set(visits.map(\.placeOsmNodeID)).count,
+            uniquePlaces: Set(visits.map(\.placeID)).count,
             topPlace: topPlace.map { ($0.key, $0.value.count) },
             topFood: foodCounts.first,
             foodCounts: foodCounts,

@@ -11,3 +11,4 @@ extension VisitDTO: @retroactive Content {}
 extension PlaceSummaryDTO: @retroactive Content {}
 extension FeedItem: @retroactive Content {}
 extension LiveStatusDTO: @retroactive Content {}
+extension FeedbackDTO: @retroactive Content {}

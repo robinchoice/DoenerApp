@@ -16,30 +16,30 @@ enum SyncQueueService {
         return d
     }()
 
-    static func enqueueVisit(osmNodeID: Int64, body: VisitSyncService.CreateVisitBody, context: ModelContext) {
+    static func enqueueVisit(placeID: String, body: VisitSyncService.CreateVisitBody, context: ModelContext) {
         guard let payload = try? encoder.encode(body) else { return }
         let op = PendingSyncOperation(
             entityType: "visit",
-            entityID: String(osmNodeID),
+            entityID: placeID,
             operationType: "create",
             payload: payload
         )
         context.insert(op)
         try? context.save()
-        print("[SyncQueue] enqueued visit for osm/\(osmNodeID)")
+        print("[SyncQueue] enqueued visit for place/\(placeID)")
     }
 
-    static func enqueueReview(osmNodeID: Int64, body: ReviewSyncService.UpsertReviewBody, context: ModelContext) {
+    static func enqueueReview(placeID: String, body: ReviewSyncService.UpsertReviewBody, context: ModelContext) {
         guard let payload = try? encoder.encode(body) else { return }
         let op = PendingSyncOperation(
             entityType: "review",
-            entityID: String(osmNodeID),
+            entityID: placeID,
             operationType: "create",
             payload: payload
         )
         context.insert(op)
         try? context.save()
-        print("[SyncQueue] enqueued review for osm/\(osmNodeID)")
+        print("[SyncQueue] enqueued review for place/\(placeID)")
     }
 
     @MainActor
@@ -51,11 +51,7 @@ enum SyncQueueService {
         print("[SyncQueue] processing \(ops.count) pending operation(s)")
 
         for op in ops {
-            guard let osmNodeID = Int64(op.entityID) else {
-                context.delete(op)
-                continue
-            }
-
+            let placeID = op.entityID
             var handled = false
 
             do {
@@ -63,14 +59,14 @@ enum SyncQueueService {
                 case "visit":
                     let body = try decoder.decode(VisitSyncService.CreateVisitBody.self, from: op.payload)
                     let _: VisitSyncService.VisitResponse = try await APIClient.shared.post(
-                        "places/by_osm/\(osmNodeID)/visits",
+                        "places/\(placeID)/visits",
                         body: body
                     )
                     handled = true
                 case "review":
                     let body = try decoder.decode(ReviewSyncService.UpsertReviewBody.self, from: op.payload)
                     let _: ReviewSyncService.ReviewResponse = try await APIClient.shared.post(
-                        "places/by_osm/\(osmNodeID)/reviews",
+                        "places/\(placeID)/reviews",
                         body: body
                     )
                     handled = true
@@ -82,7 +78,7 @@ enum SyncQueueService {
             } catch {
                 op.retryCount += 1
                 if op.retryCount >= maxRetries {
-                    print("[SyncQueue] giving up on \(op.entityType)/\(osmNodeID) after \(maxRetries) retries")
+                    print("[SyncQueue] giving up on \(op.entityType)/\(placeID) after \(maxRetries) retries")
                     handled = true
                 }
             }

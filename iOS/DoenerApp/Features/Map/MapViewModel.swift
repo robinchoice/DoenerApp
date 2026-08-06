@@ -13,15 +13,29 @@ final class MapViewModel {
         center: CLLocationCoordinate2D(latitude: 47.999, longitude: 7.842),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )))
-    var visitCounts: [Int64: Int] = [:]
+    var visitCounts: [String: Int] = [:]
 
     private var modelContext: ModelContext?
     private var lastFetchedRegion: MKCoordinateRegion?
     private var activeFetchTask: Task<Void, Never>?
 
-    /// Skip Overpass entirely above this span — query would time out and the
-    /// result would be useless dot-soup anyway.
+    /// Skip fetching entirely above this span — the result would be useless
+    /// dot-soup anyway.
     private let maxFetchableSpan: Double = 0.5
+
+    private struct SearchPlace: Decodable {
+        let placeID: String
+        let name: String
+        let latitude: Double
+        let longitude: Double
+        let address: String?
+        let postalCode: String?
+        let city: String?
+        let openingHours: String?
+        let avgRating: Double?
+        let reviewCount: Int
+        let specialNote: String?
+    }
 
     func setup(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -30,7 +44,8 @@ final class MapViewModel {
     }
 
     func onRegionChanged(_ region: MKCoordinateRegion) async {
-        // Skip absurdly large spans — Overpass times out, user gets nothing useful.
+        // Skip absurdly large spans — the query would time out and the
+        // result would be useless dot-soup anyway.
         guard region.span.latitudeDelta < maxFetchableSpan,
               region.span.longitudeDelta < maxFetchableSpan else {
             return
@@ -61,63 +76,65 @@ final class MapViewModel {
     func fetchPlaces(in region: MKCoordinateRegion) async {
         guard let modelContext else { return }
 
+        // Cost guard: skip the backend entirely if this region was already
+        // synced recently — avoids paying Google on every map pan.
+        guard !isRegionCovered(region) else {
+            lastFetchedRegion = region
+            return
+        }
+
         isLoading = true
         errorMessage = nil
 
         do {
-            let elements = try await OverpassClient.fetchDoenerPlaces(in: region)
+            let lat = String(region.center.latitude)
+            let lon = String(region.center.longitude)
+            let radiusM = String(Int(region.span.latitudeDelta * 111_000))
 
-            for element in elements {
-                guard let lat = element.coordinateLat, let lon = element.coordinateLon else { continue }
-                let tags = element.tags ?? [:]
-                let name = tags["name"] ?? "Döner"
+            let results: [SearchPlace] = try await APIClient.shared.get(
+                "places/search", query: ["lat": lat, "lon": lon, "radius": radiusM]
+            )
 
-                // OSM nodes/ways/relations share an Int64 namespace but IDs can collide.
-                // Encode type into the stored ID: nodes positive, ways negative,
-                // relations negated + large offset. Cleaned up in Phase 0 (backend Shop entity).
-                let osmID: Int64
-                switch element.type {
-                case "way":      osmID = -element.id
-                case "relation": osmID = -(element.id + 1_000_000_000_000)
-                default:         osmID = element.id
-                }
+            for sp in results {
+                let placeID = sp.placeID
                 let descriptor = FetchDescriptor<CachedPlace>(
-                    predicate: #Predicate { $0.osmNodeID == osmID }
+                    predicate: #Predicate { $0.placeID == placeID }
                 )
                 let existing = try modelContext.fetch(descriptor)
 
-                if let place = existing.first {
-                    place.name = name
-                    place.latitude = lat
-                    place.longitude = lon
-                    place.address = [tags["addr:street"], tags["addr:housenumber"]].compactMap { $0 }.joined(separator: " ")
-                    place.postalCode = tags["addr:postcode"]
-                    place.city = tags["addr:city"]
-                    place.openingHours = tags["opening_hours"]
-                    place.lastSyncedAt = Date()
+                let place: CachedPlace
+                if let found = existing.first {
+                    found.name = sp.name
+                    found.latitude = sp.latitude
+                    found.longitude = sp.longitude
+                    found.address = sp.address
+                    found.postalCode = sp.postalCode
+                    found.city = sp.city
+                    found.openingHours = sp.openingHours
+                    found.lastSyncedAt = Date()
+                    place = found
                 } else {
-                    let place = CachedPlace(
-                        osmNodeID: osmID,
-                        name: name,
-                        latitude: lat,
-                        longitude: lon,
-                        address: [tags["addr:street"], tags["addr:housenumber"]].compactMap { $0 }.joined(separator: " "),
-                        postalCode: tags["addr:postcode"],
-                        city: tags["addr:city"],
-                        openingHours: tags["opening_hours"]
+                    place = CachedPlace(
+                        placeID: sp.placeID,
+                        name: sp.name,
+                        latitude: sp.latitude,
+                        longitude: sp.longitude,
+                        address: sp.address,
+                        postalCode: sp.postalCode,
+                        city: sp.city,
+                        openingHours: sp.openingHours
                     )
                     modelContext.insert(place)
                 }
+                place.avgRating = sp.avgRating
+                place.reviewCount = sp.reviewCount
+                if let note = sp.specialNote { place.specialNote = note }
             }
 
             try modelContext.save()
             lastFetchedRegion = region
+            recordFetchedRegion(region)
             loadCachedPlaces()
-
-            // Overlay backend community data (ratings, specialNote) onto cached places — non-blocking
-            Task { [weak self] in
-                await self?.mergeBackendPlaces(region: region, modelContext: modelContext)
-            }
         } catch is CancellationError {
             // Ignore cancellation from region changes
         } catch let urlError as URLError where urlError.code == .cancelled {
@@ -141,41 +158,24 @@ final class MapViewModel {
         }
     }
 
-    // MARK: - Backend Overlay
+    // MARK: - Region cache (cost guard)
 
-    private struct BackendPlace: Decodable {
-        let osmNodeID: Int64
-        let avgRating: Double?
-        let reviewCount: Int
-        let specialNote: String?
+    private func isRegionCovered(_ region: MKCoordinateRegion) -> Bool {
+        guard let modelContext else { return false }
+        guard let regions = try? modelContext.fetch(FetchDescriptor<CachedRegion>()) else { return false }
+        return regions.contains { cached in
+            !cached.isStale && cached.contains(latitude: region.center.latitude, longitude: region.center.longitude)
+        }
     }
 
-    private func mergeBackendPlaces(region: MKCoordinateRegion, modelContext: ModelContext) async {
-        let lat = String(region.center.latitude)
-        let lon = String(region.center.longitude)
-        // Radius in meters — approximate from span (1° lat ≈ 111km)
-        let radiusM = String(Int(region.span.latitudeDelta * 111_000))
-
-        do {
-            let backendPlaces: [BackendPlace] = try await APIClient.shared.get(
-                "places", query: ["lat": lat, "lon": lon, "radius": radiusM]
-            )
-            for bp in backendPlaces {
-                let osmID = bp.osmNodeID
-                let descriptor = FetchDescriptor<CachedPlace>(
-                    predicate: #Predicate { $0.osmNodeID == osmID }
-                )
-                guard let cached = try modelContext.fetch(descriptor).first else { continue }
-                cached.avgRating = bp.avgRating
-                cached.reviewCount = bp.reviewCount
-                if let note = bp.specialNote { cached.specialNote = note }
-            }
-            try modelContext.save()
-            loadCachedPlaces()
-        } catch {
-            // Backend overlay is best-effort — don't show errors for this
-            print("[MapVM] Backend overlay failed: \(error.localizedDescription)")
-        }
+    private func recordFetchedRegion(_ region: MKCoordinateRegion) {
+        guard let modelContext else { return }
+        let south = region.center.latitude - region.span.latitudeDelta / 2
+        let north = region.center.latitude + region.span.latitudeDelta / 2
+        let west = region.center.longitude - region.span.longitudeDelta / 2
+        let east = region.center.longitude + region.span.longitudeDelta / 2
+        modelContext.insert(CachedRegion(minLat: south, maxLat: north, minLon: west, maxLon: east))
+        try? modelContext.save()
     }
 
     func loadVisitCounts() {
@@ -183,7 +183,7 @@ final class MapViewModel {
         do {
             let descriptor = FetchDescriptor<Visit>()
             let allVisits = try modelContext.fetch(descriptor)
-            visitCounts = Dictionary(grouping: allVisits, by: \.placeOsmNodeID)
+            visitCounts = Dictionary(grouping: allVisits, by: \.placeID)
                 .mapValues(\.count)
         } catch {
             errorMessage = error.localizedDescription

@@ -52,7 +52,7 @@ public struct UserDTO: Codable, Sendable, Identifiable {
 
 public struct PlaceDTO: Codable, Sendable, Identifiable {
     public let id: UUID
-    public let osmNodeID: Int64
+    public let placeID: String
     public let name: String
     public let latitude: Double
     public let longitude: Double
@@ -64,11 +64,11 @@ public struct PlaceDTO: Codable, Sendable, Identifiable {
     public let reviewCount: Int
     public let specialNote: String?
 
-    public init(id: UUID, osmNodeID: Int64, name: String, latitude: Double, longitude: Double,
+    public init(id: UUID, placeID: String, name: String, latitude: Double, longitude: Double,
                 address: String?, postalCode: String?, city: String?, openingHours: String?,
                 avgRating: Double?, reviewCount: Int, specialNote: String? = nil) {
         self.id = id
-        self.osmNodeID = osmNodeID
+        self.placeID = placeID
         self.name = name
         self.latitude = latitude
         self.longitude = longitude
@@ -195,6 +195,20 @@ public struct VisitDTO: Codable, Sendable, Identifiable {
         self.placeName = placeName
         self.visitedAt = visitedAt
         self.comment = comment
+    }
+}
+
+// MARK: - Feedback
+
+public struct FeedbackDTO: Codable, Sendable, Identifiable {
+    public let id: UUID
+    public let message: String
+    public let createdAt: Date
+
+    public init(id: UUID, message: String, createdAt: Date) {
+        self.id = id
+        self.message = message
+        self.createdAt = createdAt
     }
 }
 

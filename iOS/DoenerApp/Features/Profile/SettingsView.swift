@@ -15,6 +15,7 @@ struct SettingsView: View {
 
     @State private var pendingReset: ResetAction?
     @State private var infoMessage: String?
+    @State private var showingFeedback = false
 
     @Query(sort: \MissingShopReport.createdAt, order: .reverse) private var shopReports: [MissingShopReport]
 
@@ -56,6 +57,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 accountSection
+                feedbackSection
                 backendSection
                 shopReportsSection
                 resetSection
@@ -87,10 +89,25 @@ struct SettingsView: View {
             .onAppear {
                 displayNameDraft = authStore.currentUser?.displayName ?? ""
             }
+            .sheet(isPresented: $showingFeedback) {
+                FeedbackSheet()
+            }
         }
     }
 
     // MARK: - Sections
+
+    private var feedbackSection: some View {
+        Section {
+            Button {
+                showingFeedback = true
+            } label: {
+                Label("Feedback geben", systemImage: "exclamationmark.bubble")
+            }
+        } footer: {
+            Text("Fehler gefunden oder Idee für die App? Sag uns Bescheid — wir sind in der Testphase.")
+        }
+    }
 
     private var accountSection: some View {
         Section("Account") {

@@ -3,6 +3,7 @@ import SwiftData
 
 struct DiscoverView: View {
     @Environment(\.modelContext) private var modelContext
+    @Binding var selectedTab: Int
     @State private var viewModel = DiscoverViewModel()
     @State private var locationManager = LocationManager()
     @State private var selectedPlace: CachedPlace?
@@ -97,11 +98,15 @@ struct DiscoverView: View {
 
                 // Empty state
                 if viewModel.nearbyPlaces.isEmpty && viewModel.trendingPlaces.isEmpty && viewModel.recentReviews.isEmpty && !viewModel.isLoading {
-                    ContentUnavailableView(
-                        "Noch keine Empfehlungen",
-                        systemImage: "fork.knife",
-                        description: Text("Checke bei Döner-Läden ein und bewerte sie, um Empfehlungen zu sehen.")
-                    )
+                    ContentUnavailableView {
+                        Label("Noch keine Empfehlungen", systemImage: "fork.knife")
+                    } description: {
+                        Text("Checke bei Döner-Läden ein und bewerte sie, um Empfehlungen zu sehen.")
+                    } actions: {
+                        Button("Döner-Laden finden") { selectedTab = 3 }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                    }
                 }
             }
             .padding()
