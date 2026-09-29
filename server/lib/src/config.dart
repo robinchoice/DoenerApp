@@ -15,7 +15,8 @@ class Config {
   final int port;
 
   /// Public base URL of this server, used for magic links (`$publicUrl/login?token=…`).
-  final String publicUrl;
+  /// Without it, login mails contain only the code.
+  final String? publicUrl;
   final String? googlePlacesApiKey;
   final SmtpConfig? smtp;
   final String mailFrom;
@@ -30,7 +31,7 @@ class Config {
     required this.database,
     this.databaseTls = false,
     this.port = 8080,
-    required this.publicUrl,
+    this.publicUrl,
     this.googlePlacesApiKey,
     this.smtp,
     this.mailFrom = 'Döner App <noreply@localhost>',
@@ -55,7 +56,7 @@ class Config {
       ),
       databaseTls: get('DB_TLS') == 'require',
       port: int.parse(get('PORT') ?? '8080'),
-      publicUrl: (get('PUBLIC_URL') ?? 'http://localhost:8080').replaceAll(RegExp(r'/+$'), ''),
+      publicUrl: get('PUBLIC_URL')?.replaceAll(RegExp(r'/+$'), ''),
       googlePlacesApiKey: get('GOOGLE_PLACES_API_KEY'),
       smtp: smtpHost == null
           ? null

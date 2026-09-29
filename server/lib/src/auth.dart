@@ -76,12 +76,13 @@ void mountAuth(Router router, Deps deps) {
       },
     );
 
+    final publicUrl = deps.config.publicUrl;
     await deps.mailer.send(
       to: email,
       subject: 'Dein Login-Code: $code',
       text: 'Dein Code für die Döner App: $code\n\n'
-          'Oder direkt im Browser anmelden:\n${deps.config.publicUrl}/login?token=$token\n\n'
-          'Code und Link sind ${loginRequestTtl.inMinutes} Minuten gültig. '
+          '${publicUrl == null ? '' : 'Oder direkt im Browser anmelden:\n$publicUrl/login?token=$token\n\n'}'
+          'Der Code ist ${loginRequestTtl.inMinutes} Minuten gültig. '
           'Falls du das nicht angefordert hast, ignoriere diese Mail einfach.',
     );
     return noContent();

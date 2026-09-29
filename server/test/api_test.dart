@@ -55,6 +55,10 @@ void main() {
       webDir: '/nonexistent',
     );
     db = openPool(config);
+    // Leftovers of the Vapor backend, as in production — same names as the new tables.
+    await db.execute('CREATE TABLE _fluent_migrations (id uuid PRIMARY KEY)');
+    await db.execute('CREATE TABLE users (id uuid PRIMARY KEY, apple_user_id text UNIQUE, display_name text UNIQUE)');
+    await db.execute("INSERT INTO users VALUES (gen_random_uuid(), 'apple-1', 'Alter Tester')");
     await migrate(db);
     await migrate(db); // idempotent
 
@@ -124,6 +128,13 @@ void main() {
     expect(patched, 200);
     return (auth.token, UserDto.fromJson(user as Map<String, dynamic>));
   }
+
+  test('old Vapor tables are kept in the legacy schema', () async {
+    final rows = await db.execute('SELECT display_name FROM legacy_vapor.users');
+    expect(rows.single.single, 'Alter Tester');
+    final moved = await db.execute("SELECT count(*)::int FROM pg_tables WHERE schemaname = 'legacy_vapor'");
+    expect(moved.single.single, 2);
+  });
 
   group('auth', () {
     test('magic link code flow', () async {

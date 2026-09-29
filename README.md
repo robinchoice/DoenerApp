@@ -196,7 +196,7 @@ cd app && flutter test
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | `localhost`, `5432`, `doener`, `doener`, `doener` | Postgres |
 | `DB_TLS` | – | `require` für TLS zur Datenbank |
 | `PORT` | `8080` | HTTP-Port |
-| `PUBLIC_URL` | `http://localhost:8080` | Basis für Magic-Links (`/login?token=…`) |
+| `PUBLIC_URL` | – | Basis für Magic-Links (`/login?token=…`); ohne steht nur der Code in der Mail |
 | `GOOGLE_PLACES_API_KEY` | – | Ohne Key nur bereits bekannte Läden |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SSL` | –, `587` | Mailversand; ohne Host stehen Codes im Log |
 | `MAIL_FROM` | `Döner App <noreply@localhost>` | Absender |

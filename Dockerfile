@@ -26,6 +26,8 @@ RUN cd server && dart compile exe bin/server.dart -o /server
 
 FROM scratch
 COPY --from=server /runtime/ /
+# Outgoing TLS (Google Places, SMTP) needs the CA bundle.
+COPY --from=server /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=server /server /app/server
 COPY --from=web /src/app/build/web /app/web
 ENV WEB_DIR=/app/web PORT=8080

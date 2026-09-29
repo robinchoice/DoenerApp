@@ -12,8 +12,13 @@ Pool<void> openPool(Config config) => Pool.withEndpoints(
 
 /// Each entry is one migration; statements run in a single transaction.
 /// Append only — never edit an entry that has shipped.
-const migrations = <List<String>>[
+final migrations = <List<String>>[
   [
+    // The previous Swift/Vapor backend used the same database. Its tables are
+    // kept (moved with their indexes into their own schema), not dropped.
+    'CREATE SCHEMA IF NOT EXISTS legacy_vapor',
+    for (final table in ['_fluent_migrations', 'feedback', 'visits', 'reviews', 'friendships', 'users', 'doener_places'])
+      'ALTER TABLE IF EXISTS public.$table SET SCHEMA legacy_vapor',
     '''CREATE TABLE places (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       google_place_id text NOT NULL UNIQUE,
