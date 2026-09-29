@@ -1,24 +1,4 @@
-# Xcode
-*.xcodeproj/xcuserdata/
-*.xcworkspace/xcuserdata/
-*.xcodeproj/project.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
-DerivedData/
-*.ipa
-*.dSYM.zip
-*.dSYM
-*.hmap
-*.moved-aside
-*.xcuserstate
-
-# Swift Package Manager
-.build/
-.swiftpm/
-Packages/
-*.o
-*.d
-*.swiftdeps
-
-# macOS
+# macOS / editors
 .DS_Store
 *.swp
 *~
@@ -28,8 +8,14 @@ Packages/
 .env.local
 .env.production
 
-# Docker
-Backend/data/
+# Dart / Flutter
+.dart_tool/
+build/
+app/android/key.properties
+app/android/*.jks
 
-# Uploads
-Backend/uploads/
+# Library package — consumers resolve their own versions
+packages/doener_models/pubspec.lock
+
+# Local process logs
+.enjoy-logs/

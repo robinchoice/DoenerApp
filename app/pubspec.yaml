@@ -1,0 +1,53 @@
+name: doener_app
+description: "Döner App"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_web_plugins:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  doener_models:
+    path: ../packages/doener_models
+  flutter_map: ^8.3.2
+  flutter_secure_storage: ^11.2.0
+  geolocator: ^14.1.1
+  http: ^1.6.0
+  image_picker: ^1.2.3
+  intl: ^0.20.3
+  latlong2: ^0.10.1
+  package_info_plus: ^10.2.1
+  path_provider: ^2.1.6
+  provider: ^6.1.5
+  sembast: ^3.8.11
+  sembast_web: ^2.4.6
+  url_launcher: ^6.3.2
+  uuid: ^4.6.0
+
+dev_dependencies:
+  flutter_launcher_icons: ^0.14.4
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo.jpg
+
+flutter_launcher_icons:
+  image_path: assets/logo.jpg
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    background_color: "#FF8C00"
+    theme_color: "#FF8C00"

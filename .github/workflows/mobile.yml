@@ -1,0 +1,110 @@
+name: Mobile
+
+# iOS → TestFlight (macOS-Runner, kostenlos da Repo public), Android → signiertes AAB als Artefakt.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'packages/**'
+      - '.github/workflows/mobile.yml'
+
+env:
+  FLUTTER_VERSION: 3.47.5
+
+jobs:
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Neuestes Xcode wählen
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          echo "Wähle: $XCODE"
+          sudo xcode-select -s "$XCODE/Contents/Developer"
+          xcodebuild -version
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: ASC-API-Key ablegen
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.ASC_KEY_P8 }}" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+      # Eindeutige, steigende Build-Nummer pro Lauf — TestFlight lehnt Duplikate ab.
+      - name: Flutter-Build vorbereiten
+        working-directory: app
+        run: flutter build ios --release --no-codesign --build-number=$((GITHUB_RUN_NUMBER + 10))
+
+      - name: Archive bauen
+        working-directory: app/ios
+        run: |
+          xcodebuild archive \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
+            DEVELOPMENT_TEAM=T2F442364K CODE_SIGN_STYLE=Automatic
+
+      - name: Export & Upload zu TestFlight
+        working-directory: app/ios
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Runner.xcarchive" \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
+
+  android:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      # Ohne Secrets wird mit Debug-Keys signiert (nur zum Testen, nicht für Play).
+      - name: Upload-Keystore ablegen
+        if: env.HAS_KEYSTORE == 'true'
+        working-directory: app/android
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > upload-keystore.jks
+          cat > key.properties <<EOF
+          storeFile=../upload-keystore.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          EOF
+
+      - name: App Bundle bauen
+        working-directory: app
+        run: flutter build appbundle --release --build-number=$((GITHUB_RUN_NUMBER + 10))
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: doener-android-aab
+          path: app/build/app/outputs/bundle/release/app-release.aab

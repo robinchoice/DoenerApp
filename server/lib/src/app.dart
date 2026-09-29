@@ -1,0 +1,42 @@
+import 'dart:io';
+
+import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
+import 'package:shelf_static/shelf_static.dart';
+
+import 'auth.dart';
+import 'deps.dart';
+import 'http.dart';
+import 'places.dart';
+import 'social.dart';
+
+/// API under `/api/v1`, the Flutter web build (if present) everywhere else.
+Handler buildHandler(Deps deps) {
+  final api = Router(notFoundHandler: (_) => json({'error': 'Nicht gefunden'}, status: 404))
+    ..get('/health', (Request _) => json({'status': 'ok'}));
+  mountAuth(api, deps);
+  mountPlaces(api, deps);
+  mountSocial(api, deps);
+
+  final root = Router()..mount('/api/v1/', api.call);
+
+  final webDir = Directory(deps.config.webDir);
+  if (webDir.existsSync()) {
+    final static = createStaticHandler(webDir.path, defaultDocument: 'index.html');
+    final index = File('${webDir.path}/index.html');
+    // Unknown paths (e.g. /login?token=…) fall back to the single-page app.
+    Future<Response> spa(Request request) async {
+      final response = await static(request);
+      if (response.statusCode != 404 || request.method != 'GET') return response;
+      return Response.ok(index.openRead(), headers: {'content-type': 'text/html; charset=utf-8'});
+    }
+
+    root.all('/<ignored|.*>', spa);
+  }
+
+  return const Pipeline()
+      .addMiddleware(logRequests())
+      .addMiddleware(cors(deps.config.corsOrigin))
+      .addMiddleware(errorHandling())
+      .addHandler(root.call);
+}

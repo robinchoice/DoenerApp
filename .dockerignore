@@ -1,0 +1,6 @@
+**/.dart_tool
+**/build
+app/android/.gradle
+app/ios/Pods
+.enjoy
+.enjoy-logs

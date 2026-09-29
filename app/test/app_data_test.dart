@@ -1,0 +1,126 @@
+import 'dart:convert';
+
+import 'package:doener_app/src/core/app_data.dart';
+import 'package:doener_app/src/core/session.dart';
+import 'package:doener_models/doener_models.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:sembast/sembast_memory.dart';
+
+const _place = PlaceDto(placeId: 'p1', name: 'Kebap Haus', latitude: 48, longitude: 7.85);
+const _user = UserDto(id: 'u1', displayName: 'Robin');
+
+/// Server stand-in: [mode] decides how write requests are answered.
+class FakeServer {
+  String mode = 'ok';
+  final requests = <String>[];
+
+  http.Response _json(Object body, [int status = 200]) =>
+      http.Response(jsonEncode(body), status, headers: {'content-type': 'application/json'});
+
+  Future<http.Response> handle(http.Request request) async {
+    final path = request.url.path.replaceFirst('/api/v1', '');
+    requests.add('${request.method} $path');
+    if (path == '/auth/verify') return _json(AuthResponse(token: 't', user: _user, isNewUser: false).toJson());
+    if (path.startsWith('/me/')) return _json([]);
+    if (mode == 'offline') throw http.ClientException('offline');
+    if (mode == '401') return _json({'error': 'Sitzung abgelaufen'}, 401);
+    if (mode == '400') return _json({'error': 'Ungültig'}, 400);
+
+    final body = jsonDecode(request.body) as Map<String, dynamic>;
+    final now = DateTime.now().toUtc();
+    if (path.endsWith('/visits')) {
+      return _json(VisitDto(
+        id: body['id'] as String,
+        userId: _user.id,
+        userName: _user.displayName,
+        placeId: _place.placeId,
+        placeName: _place.name,
+        visitedAt: DateTime.parse(body['visitedAt'] as String),
+        foodType: body['foodType'] as String?,
+      ).toJson(), 201);
+    }
+    return _json(ReviewDto(
+      id: 'r1',
+      userId: _user.id,
+      userName: _user.displayName,
+      placeId: _place.placeId,
+      placeName: _place.name,
+      rating: body['rating'] as int,
+      createdAt: now,
+      updatedAt: now,
+    ).toJson());
+  }
+}
+
+void main() {
+  late FakeServer server;
+  late Session session;
+  late AppData data;
+
+  setUp(() async {
+    FlutterSecureStorage.setMockInitialValues({});
+    server = FakeServer();
+    final db = await newDatabaseFactoryMemory().openDatabase('test.db');
+    session = Session(db, httpClient: MockClient(server.handle));
+    await session.load();
+    data = AppData(db, session);
+    await data.load();
+    await session.verify(const VerifyRequest(email: 'r@example.org', code: '123456'));
+    await data.onSignedIn(_user.id);
+  });
+
+  test('offline check-ins wait in the queue and sync later', () async {
+    server.mode = 'offline';
+    await data.checkIn(_place, foodType: 'yufka');
+    await data.sync();
+    expect(data.pendingCount, 1);
+    expect(data.visits.single.pending, isTrue);
+    expect(data.lastSyncError, isNotNull);
+
+    server.mode = 'ok';
+    await data.sync();
+    expect(data.pendingCount, 0);
+    expect(data.visits.single.pending, isFalse);
+    expect(data.visits.single.dto.foodType, 'yufka');
+  });
+
+  test('an expired session keeps queued entries', () async {
+    server.mode = '401';
+    await data.checkIn(_place);
+    await data.sync();
+    expect(session.isLoggedIn, isFalse);
+    expect(session.expired, isTrue);
+    expect(data.pendingCount, 1);
+
+    server.mode = 'ok';
+    await session.verify(const VerifyRequest(email: 'r@example.org', code: '123456'));
+    await data.onSignedIn(_user.id);
+    expect(data.pendingCount, 0, reason: 'same account — queue is sent after re-login');
+  });
+
+  test('only the latest review edit is queued; rejected ones are dropped', () async {
+    server.mode = 'offline';
+    await data.saveReview(_place, const UpsertReviewRequest(rating: 3));
+    await data.saveReview(_place, const UpsertReviewRequest(rating: 5));
+    await data.sync();
+    expect(data.pendingCount, 1);
+    expect(data.reviews['p1']!.dto.rating, 5);
+
+    server.mode = '400';
+    await data.sync();
+    expect(data.pendingCount, 0);
+    expect(data.reviews, isEmpty);
+    expect(data.lastSyncError, contains('verworfen'));
+  });
+
+  test('logging in as someone else clears the previous account data', () async {
+    server.mode = 'offline';
+    await data.checkIn(_place);
+    await data.onSignedIn('someone-else');
+    expect(data.visits, isEmpty);
+    expect(data.pendingCount, 0);
+  });
+}

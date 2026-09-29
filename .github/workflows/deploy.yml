@@ -1,0 +1,53 @@
+name: Deploy API + Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'packages/**'
+      - 'app/**'
+      - 'Dockerfile'
+      - '.github/workflows/deploy.yml'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: robinchoice/doener-api
+
+jobs:
+  build-and-push:
+    # Server ist ARM64 (Hetzner) — nativ auf ARM-Runner bauen, sonst "exec format error"
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/arm64
+          provenance: false
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Deploy to Coolify
+        run: |
+          # Coolify auf den konkreten Commit-SHA-Tag setzen (umgeht den 'latest'-Image-Cache,
+          # der sonst das alte Image behält), dann force-deployen.
+          curl -sf -X PATCH "https://coolify.diespaetzles.lol/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"docker_registry_image_tag\": \"${{ github.sha }}\"}"
+          curl -sf "https://coolify.diespaetzles.lol/api/v1/deploy?uuid=${{ secrets.COOLIFY_APP_UUID }}&force=true" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"
