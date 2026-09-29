@@ -1,0 +1,347 @@
+import 'package:doener_models/doener_models.dart';
+import 'package:flutter/foundation.dart';
+import 'package:sembast/sembast.dart';
+import 'package:uuid/uuid.dart';
+
+import 'api.dart';
+import 'session.dart';
+
+final _places = stringMapStoreFactory.store('places');
+final _visits = stringMapStoreFactory.store('visits');
+final _reviews = stringMapStoreFactory.store('reviews');
+final _queue = intMapStoreFactory.store('queue');
+final _favorites = StoreRef<String, bool>('favorites');
+final _notes = StoreRef<String, String>('notes');
+
+class LocalVisit {
+  final VisitDto dto;
+  final bool pending;
+  const LocalVisit(this.dto, {this.pending = false});
+}
+
+class LocalReview {
+  final ReviewDto dto;
+  final bool pending;
+  const LocalReview(this.dto, {this.pending = false});
+}
+
+/// Local-first data: everything the UI shows comes from here. The server is
+/// the source of truth for the account's visits and reviews; changes made on
+/// the device wait in a queue until they are confirmed.
+class AppData extends ChangeNotifier {
+  final Database _db;
+  final Session session;
+
+  AppData(this._db, this.session);
+
+  ApiClient get _api => session.api;
+
+  final places = <String, PlaceDto>{};
+  final favorites = <String>{};
+  final notes = <String, String>{};
+  final reviews = <String, LocalReview>{};
+  List<LocalVisit> visits = [];
+  int pendingCount = 0;
+  String? lastSyncError;
+
+  Future<void> load() async {
+    for (final r in await _places.find(_db)) {
+      places[r.key] = PlaceDto.fromJson(r.value.cast<String, dynamic>());
+    }
+    for (final r in await _favorites.find(_db)) {
+      favorites.add(r.key);
+    }
+    for (final r in await _notes.find(_db)) {
+      notes[r.key] = r.value;
+    }
+    for (final r in await _reviews.find(_db)) {
+      reviews[r.key] = _reviewFromRecord(r.value);
+    }
+    visits = [for (final r in await _visits.find(_db)) _visitFromRecord(r.value)];
+    _sortVisits();
+    pendingCount = await _queue.count(_db);
+    notifyListeners();
+  }
+
+  // MARK: - Places
+
+  Future<void> loadArea({required double south, required double west, required double north, required double east}) async {
+    final json = await _api.get('/places', query: {
+      'minLat': '$south',
+      'minLon': '$west',
+      'maxLat': '$north',
+      'maxLon': '$east',
+    });
+    await _cachePlaces(json as List);
+  }
+
+  Future<List<PlaceDto>> topNearby(double lat, double lon) async =>
+      _cachePlaces(await _api.get('/places/top', query: {'lat': '$lat', 'lon': '$lon', 'radius': '5000'}) as List);
+
+  Future<List<PlaceDto>> trending() async => _cachePlaces(await _api.get('/places/trending') as List);
+
+  /// Fresh community rating after the user reviewed a place.
+  Future<void> refreshPlace(String placeId) async =>
+      _cachePlaces([await _api.get('/places/${Uri.encodeComponent(placeId)}')]);
+
+  Future<List<PlaceDto>> _cachePlaces(List json) async {
+    final list = [for (final p in json) PlaceDto.fromJson(p as Map<String, dynamic>)];
+    await _db.transaction((tx) async {
+      for (final p in list) {
+        places[p.placeId] = p;
+        await _places.record(p.placeId).put(tx, p.toJson());
+      }
+    });
+    notifyListeners();
+    return list;
+  }
+
+  Future<void> toggleFavorite(String placeId) async {
+    if (favorites.remove(placeId)) {
+      await _favorites.record(placeId).delete(_db);
+    } else {
+      favorites.add(placeId);
+      await _favorites.record(placeId).put(_db, true);
+    }
+    notifyListeners();
+  }
+
+  Future<void> setNote(String placeId, String? text) async {
+    final note = Validation.clean(text);
+    if (note == null) {
+      notes.remove(placeId);
+      await _notes.record(placeId).delete(_db);
+    } else {
+      notes[placeId] = note;
+      await _notes.record(placeId).put(_db, note);
+    }
+    notifyListeners();
+  }
+
+  // MARK: - Visits & reviews
+
+  List<LocalVisit> visitsAt(String placeId) => visits.where((v) => v.dto.placeId == placeId).toList();
+
+  Future<void> checkIn(PlaceDto place, {String? foodType, String? comment}) async {
+    final user = session.user!;
+    final request = CreateVisitRequest(
+      id: const Uuid().v4(),
+      visitedAt: DateTime.now().toUtc(),
+      comment: Validation.clean(comment),
+      foodType: foodType,
+    );
+    final visit = VisitDto(
+      id: request.id,
+      userId: user.id,
+      userName: user.displayName,
+      placeId: place.placeId,
+      placeName: place.name,
+      visitedAt: request.visitedAt,
+      comment: request.comment,
+      foodType: foodType,
+    );
+    await _putVisit(LocalVisit(visit, pending: true));
+    await _enqueue('visit', place.placeId, request.toJson());
+    sync();
+  }
+
+  Future<void> saveReview(PlaceDto place, UpsertReviewRequest request) async {
+    final user = session.user!;
+    final now = DateTime.now().toUtc();
+    final previous = reviews[place.placeId]?.dto;
+    final review = ReviewDto(
+      id: previous?.id ?? const Uuid().v4(),
+      userId: user.id,
+      userName: user.displayName,
+      placeId: place.placeId,
+      placeName: place.name,
+      rating: request.rating,
+      sauceRating: request.sauceRating,
+      fleischRating: request.fleischRating,
+      brotRating: request.brotRating,
+      text: Validation.clean(request.text),
+      specialNote: Validation.clean(request.specialNote),
+      createdAt: previous?.createdAt ?? now,
+      updatedAt: now,
+    );
+    await _putReview(LocalReview(review, pending: true));
+    // Only the latest edit per place needs to reach the server.
+    await _queue.delete(_db, finder: Finder(filter: Filter.and([Filter.equals('kind', 'review'), Filter.equals('placeId', place.placeId)])));
+    await _enqueue('review', place.placeId, request.toJson());
+    sync();
+  }
+
+  /// Replaces synced visits/reviews with the server's copy; pending ones stay.
+  Future<void> refreshMine() async {
+    if (!session.isLoggedIn) return;
+    try {
+      final results = await Future.wait([_api.get('/me/places'), _api.get('/me/visits'), _api.get('/me/reviews')]);
+      await _cachePlaces(results[0] as List);
+      final serverVisits = [for (final v in results[1] as List) VisitDto.fromJson(v as Map<String, dynamic>)];
+      final serverReviews = [for (final r in results[2] as List) ReviewDto.fromJson(r as Map<String, dynamic>)];
+
+      final serverVisitIds = serverVisits.map((v) => v.id).toSet();
+      visits = [
+        ...serverVisits.map((v) => LocalVisit(v)),
+        ...visits.where((v) => v.pending && !serverVisitIds.contains(v.dto.id)),
+      ];
+      _sortVisits();
+      final pendingReviews = {for (final e in reviews.entries.where((e) => e.value.pending)) e.key: e.value};
+      reviews
+        ..clear()
+        ..addAll({for (final r in serverReviews) r.placeId: LocalReview(r)})
+        ..addAll(pendingReviews);
+
+      await _db.transaction((tx) async {
+        await _visits.delete(tx);
+        for (final v in visits) {
+          await _visits.record(v.dto.id).put(tx, _visitRecord(v));
+        }
+        await _reviews.delete(tx);
+        for (final r in reviews.values) {
+          await _reviews.record(r.dto.placeId).put(tx, _reviewRecord(r));
+        }
+      });
+      notifyListeners();
+    } on OfflineException {
+      // Cached data stays visible.
+    } on ApiException catch (e) {
+      debugPrint('refreshMine failed: $e');
+    }
+  }
+
+  Future<void>? _runningSync;
+  bool get syncing => _runningSync != null;
+
+  /// Sends queued changes in order. Callers during a running sync get the
+  /// running one. Stops at the first transient failure so ordering is kept;
+  /// permanently rejected entries are dropped.
+  Future<void> sync() {
+    if (!session.isLoggedIn) return Future.value();
+    return _runningSync ??= _sync().whenComplete(() {
+      _runningSync = null;
+      notifyListeners();
+    });
+  }
+
+  Future<void> _sync() async {
+    lastSyncError = null;
+    notifyListeners();
+    try {
+      final ops = await _queue.find(_db, finder: Finder(sortOrders: [SortOrder(Field.key)]));
+      for (final op in ops) {
+        final kind = op.value['kind'] as String;
+        final placeId = op.value['placeId'] as String;
+        final body = op.value['body'];
+        try {
+          if (kind == 'visit') {
+            final json = await _api.post('/places/$placeId/visits', body);
+            await _putVisit(LocalVisit(VisitDto.fromJson(json as Map<String, dynamic>)));
+          } else {
+            final json = await _api.put('/places/$placeId/review', body);
+            await _putReview(LocalReview(ReviewDto.fromJson(json as Map<String, dynamic>)));
+          }
+          await _queue.record(op.key).delete(_db);
+        } on OfflineException catch (e) {
+          lastSyncError = e.toString();
+          break;
+        } on ApiException catch (e) {
+          if (e.status == 401 || e.status == 429 || e.status >= 500) {
+            lastSyncError = e.message;
+            break;
+          }
+          await _queue.record(op.key).delete(_db);
+          await _dropPending(kind, placeId, (body as Map)['id'] as String?);
+          lastSyncError = 'Eintrag verworfen: ${e.message}';
+        }
+      }
+    } finally {
+      pendingCount = await _queue.count(_db);
+    }
+  }
+
+  /// Called after every successful login.
+  Future<void> onSignedIn(String userId) async {
+    final previous = await settingsStore.record('accountUserId').get(_db);
+    if (previous != null && previous != userId) await clearAccountData();
+    await settingsStore.record('accountUserId').put(_db, userId);
+    await sync();
+    await refreshMine();
+  }
+
+  Future<void> clearAccountData() async {
+    await _db.transaction((tx) async {
+      await _visits.delete(tx);
+      await _reviews.delete(tx);
+      await _queue.delete(tx);
+      await settingsStore.record('accountUserId').delete(tx);
+    });
+    visits = [];
+    reviews.clear();
+    pendingCount = 0;
+    notifyListeners();
+  }
+
+  /// Drops cached places that nothing on this device refers to.
+  Future<void> clearMapCache() async {
+    final keep = {...favorites, ...notes.keys, ...reviews.keys, ...visits.map((v) => v.dto.placeId)};
+    places.removeWhere((id, _) => !keep.contains(id));
+    await _places.delete(_db, finder: Finder(filter: Filter.custom((r) => !keep.contains(r.key))));
+    notifyListeners();
+  }
+
+  Future<void> clearDeviceData() async {
+    await clearAccountData();
+    await _db.transaction((tx) async {
+      await _favorites.delete(tx);
+      await _notes.delete(tx);
+      await _places.delete(tx);
+    });
+    favorites.clear();
+    notes.clear();
+    places.clear();
+    notifyListeners();
+  }
+
+  // MARK: - Persistence helpers
+
+  Future<void> _enqueue(String kind, String placeId, Map<String, dynamic> body) async {
+    await _queue.add(_db, {'kind': kind, 'placeId': placeId, 'body': body});
+    pendingCount = await _queue.count(_db);
+    notifyListeners();
+  }
+
+  Future<void> _putVisit(LocalVisit visit) async {
+    visits = [...visits.where((v) => v.dto.id != visit.dto.id), visit];
+    _sortVisits();
+    await _visits.record(visit.dto.id).put(_db, _visitRecord(visit));
+    notifyListeners();
+  }
+
+  Future<void> _putReview(LocalReview review) async {
+    reviews[review.dto.placeId] = review;
+    await _reviews.record(review.dto.placeId).put(_db, _reviewRecord(review));
+    notifyListeners();
+  }
+
+  Future<void> _dropPending(String kind, String placeId, String? visitId) async {
+    if (kind == 'visit' && visitId != null) {
+      visits = visits.where((v) => v.dto.id != visitId).toList();
+      await _visits.record(visitId).delete(_db);
+    } else if (kind == 'review' && reviews[placeId]?.pending == true) {
+      reviews.remove(placeId);
+      await _reviews.record(placeId).delete(_db);
+    }
+    notifyListeners();
+  }
+
+  void _sortVisits() => visits.sort((a, b) => b.dto.visitedAt.compareTo(a.dto.visitedAt));
+
+  static Map<String, Object?> _visitRecord(LocalVisit v) => {'dto': v.dto.toJson(), 'pending': v.pending};
+  static Map<String, Object?> _reviewRecord(LocalReview r) => {'dto': r.dto.toJson(), 'pending': r.pending};
+
+  static LocalVisit _visitFromRecord(Map<String, Object?> r) =>
+      LocalVisit(VisitDto.fromJson((r['dto'] as Map).cast<String, dynamic>()), pending: r['pending'] as bool);
+  static LocalReview _reviewFromRecord(Map<String, Object?> r) =>
+      LocalReview(ReviewDto.fromJson((r['dto'] as Map).cast<String, dynamic>()), pending: r['pending'] as bool);
+}

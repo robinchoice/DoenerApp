@@ -1,0 +1,262 @@
+import 'dart:convert';
+
+import 'package:doener_models/doener_models.dart';
+import 'package:postgres/postgres.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf_router/shelf_router.dart';
+
+import 'auth.dart';
+import 'deps.dart';
+import 'http.dart';
+import 'places.dart';
+
+const _friendIdsCte = 'WITH friends AS ('
+    ' SELECT CASE WHEN requester_id = @me:uuid THEN addressee_id ELSE requester_id END AS id'
+    ' FROM friendships WHERE status = \'accepted\' AND (requester_id = @me:uuid OR addressee_id = @me:uuid))';
+
+/// Keyset cursor "(timestamp, id)" — stable even when entries share a timestamp.
+String encodeCursor(DateTime timestamp, String id) =>
+    base64Url.encode(utf8.encode('${timestamp.toUtc().toIso8601String()}|$id'));
+
+(DateTime, String)? decodeCursor(String? cursor) {
+  if (cursor == null || cursor.isEmpty) return null;
+  try {
+    final parts = utf8.decode(base64Url.decode(cursor)).split('|');
+    if (parts.length != 2) throw const FormatException();
+    return (DateTime.parse(parts[0]), requireUuid(parts[1]));
+  } on FormatException {
+    throw const ApiException.badRequest('Ungültiger Cursor');
+  }
+}
+
+void mountSocial(Router router, Deps deps) {
+  router.get('/feed', (Request request) async {
+    final me = await requireUser(deps, request);
+    final limit = queryInt(request, 'limit', fallback: 20, min: 1, max: 50);
+    final cursor = decodeCursor(request.url.queryParameters['cursor']);
+
+    // One query over both activity types, ordered and limited together — so
+    // "hasMore" is exact and nothing gets skipped between pages.
+    final rows = await query(
+      deps.db,
+      '$_friendIdsCte SELECT * FROM ('
+      '  SELECT \'visit\' AS type, v.id, v.user_id, v.place_id, v.visited_at AS ts, v.comment AS text,'
+      '         NULL::int AS rating, v.food_type FROM visits v WHERE v.user_id IN (SELECT id FROM friends)'
+      '  UNION ALL'
+      '  SELECT \'review\', r.id, r.user_id, r.place_id, r.updated_at, r.text, r.rating, NULL'
+      '  FROM reviews r WHERE r.user_id IN (SELECT id FROM friends)'
+      ') f ${cursor == null ? '' : 'WHERE (f.ts, f.id) < (@ts:timestamptz, @id:uuid)'}'
+      ' ORDER BY f.ts DESC, f.id DESC LIMIT @limit:int4',
+      {'me': me.id, 'limit': limit + 1, if (cursor != null) 'ts': cursor.$1, if (cursor != null) 'id': cursor.$2},
+    );
+
+    final hasMore = rows.length > limit;
+    final page = rows.take(limit).toList();
+    final users = await _usersById(deps, page.map((r) => r['user_id'] as String).toSet());
+    final places = await _placesById(deps, page.map((r) => r['place_id'] as String).toSet());
+
+    final items = [
+      for (final r in page)
+        FeedItem(
+          id: r['id'] as String,
+          type: FeedItemType.values.byName(r['type'] as String),
+          user: users[r['user_id']]!,
+          place: places[r['place_id']]!,
+          timestamp: r['ts'] as DateTime,
+          rating: r['rating'] as int?,
+          text: r['text'] as String?,
+          foodType: r['food_type'] as String?,
+        ),
+    ];
+    final last = page.isEmpty ? null : page.last;
+    return json(FeedPage(
+      items: items,
+      cursor: hasMore ? encodeCursor(last!['ts'] as DateTime, last['id'] as String) : null,
+      hasMore: hasMore,
+    ).toJson());
+  });
+
+  router.get('/feed/live', (Request request) async {
+    final me = await requireUser(deps, request);
+    final rows = await query(
+      deps.db,
+      '$_friendIdsCte SELECT u.id, u.display_name, u.live_until, u.live_food_type, p.google_place_id, p.name '
+      'FROM users u JOIN places p ON p.id = u.live_place_id '
+      'WHERE u.id IN (SELECT id FROM friends) AND u.live_until > now() ORDER BY u.live_until DESC',
+      {'me': me.id},
+    );
+    return json([
+      for (final r in rows)
+        LiveStatusDto(
+          user: UserDto(id: r['id'] as String, displayName: r['display_name'] as String),
+          placeId: r['google_place_id'] as String,
+          placeName: r['name'] as String,
+          foodType: r['live_food_type'] as String?,
+          until: r['live_until'] as DateTime,
+        ).toJson(),
+    ]);
+  });
+
+  router.delete('/me/live-status', (Request request) async {
+    final me = await requireUser(deps, request);
+    await deps.db.execute(
+      Sql.named('UPDATE users SET live_place_id = NULL, live_until = NULL, live_food_type = NULL WHERE id = @id:uuid'),
+      parameters: {'id': me.id},
+    );
+    return noContent();
+  });
+
+  router.get('/users/search', (Request request) async {
+    final me = await requireUser(deps, request);
+    final q = request.url.queryParameters['q']?.trim() ?? '';
+    if (q.length < 2) throw const ApiException.badRequest('Mindestens 2 Zeichen');
+    final pattern = '${q.replaceAllMapped(RegExp(r'[\\%_]'), (m) => '\\${m[0]}')}%';
+    final rows = await query(
+      deps.db,
+      'SELECT id, display_name FROM users WHERE display_name ILIKE @pattern AND id <> @me:uuid '
+      'ORDER BY lower(display_name) LIMIT 20',
+      {'pattern': pattern, 'me': me.id},
+    );
+    return json(
+      rows.map((r) => UserDto(id: r['id'] as String, displayName: r['display_name'] as String).toJson()).toList(),
+    );
+  });
+
+  router.get('/friends', (Request request) async {
+    final me = await requireUser(deps, request);
+    final rows = await query(deps.db, '$_friendshipSelect WHERE f.requester_id = @me:uuid OR f.addressee_id = @me:uuid '
+        'ORDER BY f.created_at DESC', {'me': me.id});
+    return json(rows.map((r) => _friendshipFromRow(r, me.id).toJson()).toList());
+  });
+
+  router.post('/friends/requests', (Request request) async {
+    final me = await requireUser(deps, request);
+    final body = await readBody(request, FriendRequestBody.fromJson);
+    final other = requireUuid(body.userId, 'userId');
+    if (other == me.id) throw const ApiException.badRequest('Du kannst dich nicht selbst hinzufügen');
+    if (await queryOne(deps.db, 'SELECT 1 FROM users WHERE id = @id:uuid', {'id': other}) == null) {
+      throw const ApiException.notFound('Nutzer nicht gefunden');
+    }
+
+    await deps.db.execute(
+      Sql.named('INSERT INTO friendships (requester_id, addressee_id, status) VALUES (@me:uuid, @other:uuid, \'pending\') '
+          'ON CONFLICT (LEAST(requester_id, addressee_id), GREATEST(requester_id, addressee_id)) DO NOTHING'),
+      parameters: {'me': me.id, 'other': other},
+    );
+    // If they already asked me, asking back means accepting.
+    await deps.db.execute(
+      Sql.named('UPDATE friendships SET status = \'accepted\' '
+          'WHERE requester_id = @other:uuid AND addressee_id = @me:uuid AND status = \'pending\''),
+      parameters: {'me': me.id, 'other': other},
+    );
+    final row = await queryOne(
+      deps.db,
+      '$_friendshipSelect WHERE (f.requester_id = @me:uuid AND f.addressee_id = @other:uuid) '
+      'OR (f.requester_id = @other:uuid AND f.addressee_id = @me:uuid)',
+      {'me': me.id, 'other': other},
+    );
+    return json(_friendshipFromRow(row!, me.id).toJson());
+  });
+
+  router.post('/friends/<id>/accept', (Request request, String id) async {
+    final me = await requireUser(deps, request);
+    final row = await queryOne(
+      deps.db,
+      'UPDATE friendships SET status = \'accepted\' WHERE id = @id:uuid AND addressee_id = @me:uuid RETURNING id',
+      {'id': requireUuid(id), 'me': me.id},
+    );
+    if (row == null) throw const ApiException.notFound('Anfrage nicht gefunden');
+    final full = await queryOne(deps.db, '$_friendshipSelect WHERE f.id = @id:uuid', {'id': id});
+    return json(_friendshipFromRow(full!, me.id).toJson());
+  });
+
+  router.delete('/friends/<id>', (Request request, String id) async {
+    final me = await requireUser(deps, request);
+    final row = await queryOne(
+      deps.db,
+      'DELETE FROM friendships WHERE id = @id:uuid AND (requester_id = @me:uuid OR addressee_id = @me:uuid) RETURNING id',
+      {'id': requireUuid(id), 'me': me.id},
+    );
+    if (row == null) throw const ApiException.notFound('Freundschaft nicht gefunden');
+    return noContent();
+  });
+
+  router.post('/feedback', (Request request) async {
+    final me = await requireUser(deps, request);
+    final body = await readBody(request, FeedbackRequest.fromJson);
+    final message = body.message.trim();
+    if (message.length < Validation.feedbackMin || message.length > Validation.feedbackMax) {
+      throw const ApiException.badRequest('Nachricht zu kurz oder zu lang');
+    }
+    List<int>? screenshot;
+    if (body.screenshotBase64 != null) {
+      try {
+        screenshot = base64.decode(body.screenshotBase64!);
+      } on FormatException {
+        throw const ApiException.badRequest('Screenshot ist kein gültiges Base64');
+      }
+    }
+    await deps.db.execute(
+      Sql.named('INSERT INTO feedback (user_id, message, screenshot, app_version, build_number, platform) '
+          'VALUES (@user:uuid, @message, @shot:bytea, @version, @build, @platform)'),
+      parameters: {
+        'user': me.id,
+        'message': message,
+        'shot': screenshot,
+        'version': body.appVersion,
+        'build': body.buildNumber,
+        'platform': body.platform,
+      },
+    );
+    return noContent();
+  });
+
+  router.post('/shop-reports', (Request request) async {
+    final me = await requireUser(deps, request);
+    final body = await readBody(request, ShopReportRequest.fromJson);
+    final name = body.name.trim();
+    if (name.length < Validation.shopNameMin) throw const ApiException.badRequest('Name zu kurz');
+    await deps.db.execute(
+      Sql.named('INSERT INTO shop_reports (user_id, name, hint, latitude, longitude, note) '
+          'VALUES (@user:uuid, @name, @hint, @lat, @lon, @note)'),
+      parameters: {
+        'user': me.id,
+        'name': name,
+        'hint': Validation.clean(body.hint),
+        'lat': body.latitude,
+        'lon': body.longitude,
+        'note': Validation.clean(body.note),
+      },
+    );
+    return noContent();
+  });
+}
+
+const _friendshipSelect = 'SELECT f.id, f.status, f.created_at, f.requester_id, f.addressee_id, '
+    'r.display_name AS requester_name, a.display_name AS addressee_name FROM friendships f '
+    'JOIN users r ON r.id = f.requester_id JOIN users a ON a.id = f.addressee_id';
+
+FriendshipDto _friendshipFromRow(Map<String, dynamic> row, String me) {
+  final outgoing = row['requester_id'] == me;
+  return FriendshipDto(
+    id: row['id'] as String,
+    user: outgoing
+        ? UserDto(id: row['addressee_id'] as String, displayName: row['addressee_name'] as String)
+        : UserDto(id: row['requester_id'] as String, displayName: row['requester_name'] as String),
+    status: FriendshipStatus.values.byName(row['status'] as String),
+    direction: outgoing ? FriendshipDirection.outgoing : FriendshipDirection.incoming,
+    createdAt: row['created_at'] as DateTime,
+  );
+}
+
+Future<Map<String, UserDto>> _usersById(Deps deps, Set<String> ids) async {
+  if (ids.isEmpty) return {};
+  final rows = await query(deps.db, 'SELECT id, display_name FROM users WHERE id = ANY(@ids:_uuid)', {'ids': ids.toList()});
+  return {for (final r in rows) r['id'] as String: UserDto(id: r['id'] as String, displayName: r['display_name'] as String)};
+}
+
+Future<Map<String, PlaceDto>> _placesById(Deps deps, Set<String> ids) async {
+  if (ids.isEmpty) return {};
+  final rows = await query(deps.db, 'SELECT * FROM place_view WHERE id = ANY(@ids:_uuid)', {'ids': ids.toList()});
+  return {for (final r in rows) r['id'] as String: placeFromRow(r)};
+}

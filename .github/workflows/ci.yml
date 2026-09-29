@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.5
+          channel: stable
+          cache: true
+
+      - name: Models
+        working-directory: packages/doener_models
+        run: dart pub get && dart analyze && dart test
+
+      - name: Server
+        working-directory: server
+        env:
+          TEST_DB_PORT: 5432
+          TEST_DB_PASSWORD: postgres
+        run: dart pub get && dart analyze && dart test
+
+      - name: App
+        working-directory: app
+        run: flutter pub get && flutter analyze && flutter test
