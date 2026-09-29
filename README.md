@@ -1,17 +1,19 @@
 # Döner-App 🥙
 
-Eine iOS-App zum Finden, Bewerten und Sammeln von Dönerläden. Offline-First, Community-getrieben, mit Gamification-Mechaniken die an Pokémon Go und Spotify Wrapped erinnern.
+Eine App zum Finden, Bewerten und Sammeln von Dönerläden – für iOS, Android und Web aus einer Codebase. Offline-First, Community-getrieben, mit Gamification-Mechaniken, die an Pokémon Go und Spotify Wrapped erinnern.
 
 ---
 
 ## Überblick
 
-Die Döner-App verbindet eine persönliche Stempelkarte mit einem sozialen Layer: Nutzer checken bei Läden ein, bewerten nach Sauce/Fleisch/Brot, verfolgen ihre eigene Döner-Geschichte und sehen was Freunde gerade essen.
+Die Döner-App verbindet eine persönliche Stempelkarte mit einem sozialen Layer: Nutzer checken bei Läden ein, bewerten nach Soße/Fleisch/Brot, verfolgen ihre eigene Döner-Geschichte und sehen, was Freunde gerade essen.
 
 **Stack:**
-- iOS: Swift 6, SwiftUI, MapKit, SwiftData
-- Backend: Vapor (Swift), PostgreSQL + PostGIS, Docker
-- Daten: OpenStreetMap via Overpass API
+- App: Flutter (iOS, Android, Web), flutter_map mit OpenStreetMap-Kacheln, sembast als lokaler Store
+- Server: Dart (shelf), PostgreSQL – liefert auch die Web-App aus
+- Geteilt: `packages/doener_models` – DTOs, Validierung und Gamification-Regeln für App und Server
+- Läden: Google Places API (New), serverseitig abgefragt und gecacht
+- Login: E-Mail-Code bzw. Magic-Link, kein Passwort
 
 ---
 
@@ -19,38 +21,34 @@ Die Döner-App verbindet eine persönliche Stempelkarte mit einem sozialen Layer
 
 ### Karte
 
-Die Karte ist der Einstiegspunkt. Sie lädt Dönerläden dynamisch per Overpass API basierend auf dem sichtbaren Kartenausschnitt — aber nur wenn der Span klein genug ist (< 0.5°), um Timeouts zu vermeiden. Ein Caching-Layer in SwiftData verhindert unnötige Netzwerkaufrufe: Regionen werden erst nach 24h neu geladen.
+Die Karte lädt Dönerläden für den sichtbaren Ausschnitt (nur bis 0,5° Span). Der Server fragt Google pro Kachel (0,03°) höchstens alle 30 Tage ab, auch leere Kacheln werden gemerkt. Das hält die Google-Kosten klein. Erkannt werden Läden über den Namen (Döner, Kebap, Dürüm, Yufka …) oder den Google-Typ (z. B. türkisches Restaurant).
 
-**UI-Details:**
-- Kein Standard-Apple-Maps-Look: POI-Layer deaktiviert, 3D-Elevation aktiv, Fokus liegt auf Döner-Pins
-- Custom Pin-Views zeigen Ladenname + lokalen Besuchszähler direkt auf der Karte
-- Favoriten-Filter per Heart-Button oben rechts: zeigt nur gemerkte Läden, Pins werden pink
-- Backend-Overlay ist non-blocking: OSM-Daten erscheinen sofort, Community-Ratings werden still nachgeladen
+- Pins zeigen den lokalen Besuchszähler, besuchte Läden sind grün, Favoriten pink
+- Favoriten-Filter per Herz oben rechts
+- „Laden fehlt?“ oben links schickt eine Meldung samt Kartenposition an den Server
 
 ### Check-In
 
-Der Check-In ist bewusst schnell gehalten. Ein Rotary Picker dreht sich durch 6 Food-Types (Döner Classic, Hähnchen, Lamm, Falafel, Salat, Sonstiges) — oberstes Symbol = ausgewählt.
+Ein Drehrad mit 6 Essenstypen (Döner, Yufka, Lahmacun, Teller, Pommes, Falafel) – das oberste Symbol ist ausgewählt. Danach regnet es Emojis des gewählten Essens.
 
-**UI-Details:**
-- Bestätigung: großer oranger Kreis mit Checkmark — klar, unübersehbar
-- Confetti-Animation: Emoji-Partikel des gewählten Food-Types fallen herunter (nicht generisches Konfetti)
-- Check-In speichert lokal in SwiftData zuerst, Backend-Sync läuft danach asynchron
+- Check-ins werden sofort lokal gespeichert und über eine Sync-Queue an den Server geschickt
+- Die ID erzeugt der Client, deshalb entstehen bei Wiederholungen keine doppelten Besuche
+- Ein Check-in setzt für 2 Stunden den Live-Status („isst gerade bei …“), aber nur wenn er wirklich gerade passiert
 
 ### Bewertungen
 
-Reviews haben ein 5-Sterne-Gesamtrating plus drei optionale Dimensions-Ratings: Sauce, Fleisch, Brot. Das Gesamtrating berechnet sich automatisch als Durchschnitt der Dimensionen, kann aber manuell überschrieben werden.
+Ein Gesamtrating (1–5) plus drei optionale Dimensionen: Soße, Fleisch, Brot. Das Gesamtrating ist automatisch der Durchschnitt der Dimensionen und kann manuell überschrieben werden.
 
-**UI-Details:**
-- Dimensions-Ratings sind optional — wer nur eine Zahl will, kann das
-- Beim Review kann eine Community-Notiz vorgeschlagen werden: kurze Freitext-Beschreibung die für alle Nutzer des Ladens sichtbar ist (z.B. "Besonders gute Knoblauchsoße")
-- One-Per-User-Per-Place: zweiter Review überschreibt den ersten, Aggregate werden neu berechnet
+- Eine Bewertung pro Nutzer und Laden – eine neue ersetzt die alte
+- „Was macht den Laden besonders?“ gehört zur eigenen Bewertung; der Laden zeigt die jüngste solche Notiz
+- Durchschnitt und Anzahl berechnet der Server beim Lesen, nichts wird doppelt gespeichert
+- In der Laden-Ansicht: eigene Bewertung, Community-Zusammenfassung und Bewertungen anderer
 
 ### Profil & Stempelkarte
 
-Das Profil ist der persönliche Döner-Pass.
+Das Profil ist der persönliche Döner-Pass: Besuche, Bewertungen, Läden, Döner-Konsum nach Essenstyp und „Seit [Monat Jahr]“ ab dem ersten Check-in.
 
-**Stempel-Tiers (6 Stufen):**
-| Tier | Ab | Farbe |
+| Stufe | Ab Besuchen | Farbe |
 |---|---|---|
 | Dönerneuling | 0 | Grau |
 | Dönerfreund | 5 | Braun |
@@ -59,202 +57,191 @@ Das Profil ist der persönliche Döner-Pass.
 | Dönermeister | 60 | Lila |
 | Dönerlegende | 100 | Gold |
 
-**UI-Details:**
-- 10×10 Stempel-Grid, pro Tier gefüllt dargestellt
-- Progress-Bar zum nächsten Tier mit Text ("noch 8 bis Dönerprofi")
-- Food-Konsum-Stats als Bar-Chart mit prozentualer Verteilung
-- "Seit [Monat/Jahr]"-Badge basiert auf dem ersten Check-In als Join-Date
+### Erfolge
 
-### Achievements
-
-11 unlockbare Badges in einem 4×4-Grid. Locked/Unlocked visuell klar unterschieden.
-
-| Badge | Bedingung |
+| Erfolg | Bedingung |
 |---|---|
-| First Bite | Erster Check-In |
-| Critic | Erste Bewertung |
-| Regular | 5× gleicher Laden |
-| Explorer | 10 verschiedene Läden |
-| Connoisseur | 50 verschiedene Läden |
-| Berlin Tour | 5 Läden in Berlin |
-| Hamburg Tour | 5 Läden in Hamburg |
-| Stamp Collector Silver | Tier "Dönerfan" erreicht |
-| Stamp Collector Gold | Tier "Dönermeister" erreicht |
-| Night Owl | Check-In nach 22:00 Uhr |
-| Social Butterfly | 5+ Freunde |
+| First Bite | Erster Check-in |
+| Kritiker | Erste Bewertung |
+| Stammgast | 5× derselbe Laden |
+| Entdecker | 10 verschiedene Läden |
+| Kenner | 50 verschiedene Läden |
+| Berlin Döner Tour | 5 Läden in Berlin |
+| Hamburg Döner Tour | 5 Läden in Hamburg |
+| Silber-Sammler | Stufe „Dönerfan“ erreicht |
+| Gold-Sammler | Stufe „Dönermeister“ erreicht |
+| Nachtschwärmer | Check-in nach 22 Uhr |
+| Schmetterling | 5 Freunde |
+
+Die Regeln liegen in `packages/doener_models` und sind dort getestet.
 
 ### Döner Wrapped
 
-Full-Screen-Experience mit 5 animierten Seiten im Spotify-Wrapped-Stil:
-1. Total Besuche des Jahres
-2. Lieblings-Food-Type + Anzahl
-3. Top-Läden mit Besuchszahl
-4. Unique Läden entdeckt
-5. Summary
+Jahresrückblick auf 5 Seiten mit wechselnden Farbverläufen: Besuche im Jahr, Lieblingsessen, Stammladen, entdeckte Läden, Zusammenfassung mit aktivstem Monat.
 
-**UI-Details:**
-- Spring-Physics-Übergänge zwischen Seiten
-- Wechselnde Gradient-Backgrounds pro Seite
-- Zentrierte große Typografie, Emoji-basierte Visuals
+### Freunde & Feed
 
-### Friends & Social
+- Freunde per Namenssuche finden (ab 2 Zeichen); wer eine offene Anfrage zurückschickt, nimmt sie damit an
+- Freunde-Feed mit Check-ins und Bewertungen, dazu Live-Status der Freunde
+- „Meine“-Feed zeigt die eigene Aktivität, noch nicht übertragene Einträge sind markiert
 
-Bidirektionale Freundschaften (Requester/Addressee-Modell). Nutzer finden sich per Display-Name-Suche.
+### Ranking & Entdecken
 
-- Eingehende Anfragen erscheinen oben in der Friends-View
-- Slide-to-Delete für bestehende Freundschaften
-- Friend Request verhindert Duplikate und Selbst-Anfragen
-
-### Ranking
-
-Persönliches Ranking aller Läden wo der Nutzer interagiert hat. Drei Sortieroptionen per Segmented Picker:
-- **Bewertung** — nach Durchschnitts-Rating
-- **Besuche** — nach Visit-Count
-- **Zuletzt besucht** — chronologisch
-
-Top-3 bekommen Trophy-Badges statt Zahlen.
+- Ranking: alle Läden, bei denen man war oder die man bewertet hat – sortiert nach Bewertung, Besuchen oder zuletzt besucht
+- Entdecken: bestbewertete Läden in der Nähe, „Gerade im Hype“ (Aktivität der letzten 7 Tage), eigene neue Bewertungen, Suche in allen bekannten Läden
 
 ---
 
 ## Architektur
 
-### iOS
-
 ```
-iOS/DoenerApp/
-├── App/                    # Entry Point, ModelContainer, ScenePhase
-├── Core/
-│   ├── Network/            # APIClient, VisitSyncService, ReviewSyncService, SyncQueueService
-│   ├── Persistence/        # SwiftData Models
-│   └── Auth/               # AuthStore, KeychainStore
-├── Features/
-│   ├── Map/                # MapView, MapViewModel, OverpassService
-│   ├── CheckIn/            # CheckInSheet, ConfettiView
-│   ├── PlaceDetail/        # PlaceDetailView, ReviewSheet
-│   ├── Discover/           # DiscoverView, DiscoverViewModel
-│   ├── Feed/               # FeedView
-│   ├── Profile/            # ProfileView, AchievementsView, WrappedView
-│   ├── Friends/            # FriendsView, FriendSearchView
-│   ├── Ranking/            # RankingView
-│   └── Settings/           # SettingsView
-└── Shared/                 # Wiederverwendbare Views, Extensions
+app/                          Flutter-App (iOS, Android, Web)
+├── lib/src/core/             ApiClient, Session, AppData (lokaler Store + Sync-Queue), Standort
+├── lib/src/features/         auth, map, place, feed, ranking, discover, profile, social, settings, onboarding
+└── lib/src/ui/               Theme und gemeinsame Widgets
+server/                       Dart-API + Auslieferung der Web-App
+├── lib/src/auth.dart         Magic-Link-Login, Sitzungen, Account
+├── lib/src/places.dart       Läden, Bewertungen, Besuche
+├── lib/src/social.dart       Feed, Live-Status, Freunde, Feedback, Ladenmeldungen
+├── lib/src/google_places.dart
+├── lib/src/db.dart           SQL-Migrationen (nur anhängen, nie ändern)
+└── tool/seed_dev.dart        Test-Läden in Freiburg für Entwicklung ohne Google-Key
+packages/doener_models/       Geteilte DTOs, Validierung, Stempel/Erfolge/Essenstypen
 ```
 
 **Prinzipien:**
-- MVVM mit `@Observable` ViewModels + `@MainActor`
-- Offline-First: SwiftData als lokale Quelle, Backend-Sync asynchron
-- Dependency Injection via SwiftUI Environment
-- Sync-Queue: Gescheiterte Backend-Syncs werden als `PendingSyncOperation` persistiert und beim nächsten App-Vordergrund verarbeitet
+- Offline-First: Die App zeigt alles aus dem lokalen Store. Eigene Besuche und Bewertungen warten in einer Queue, bis der Server sie bestätigt.
+- Bei einem Netzwerkfehler versucht die App es später erneut, auch eine abgelaufene Sitzung verwirft keine Einträge. Nur was der Server endgültig ablehnt (z. B. ungültige Daten), wird verworfen.
+- Der Server ist die Quelle der Wahrheit für den Account. Ein neues Gerät oder die Web-App holt sich Besuche und Bewertungen über `/me/*`.
+- Favoriten und Notizen bleiben lokal auf dem Gerät.
 
-### Backend
-
-```
-Backend/Sources/App/
-├── Controllers/
-│   ├── AuthController.swift
-│   ├── PlaceController.swift
-│   ├── ReviewController.swift
-│   ├── VisitController.swift
-│   └── FriendController.swift
-├── Models/
-│   ├── User.swift
-│   ├── DoenerPlace.swift
-│   ├── Review.swift
-│   ├── Visit.swift
-│   └── Friendship.swift
-└── Migrations/
-```
-
-**API-Routen:**
+### API (`/api/v1`)
 
 | Methode | Pfad | Beschreibung |
 |---|---|---|
-| POST | `/auth/apple` | Apple Sign-In |
+| POST | `/auth/login` | Login-Code + Magic-Link per Mail schicken |
+| POST | `/auth/verify` | Code oder Link-Token einlösen → Sitzung |
+| POST | `/auth/logout` | Sitzung beenden |
 | GET | `/auth/me` | Aktueller User |
-| PATCH | `/users/me` | Display-Name ändern |
-| GET | `/places` | Läden in Radius |
-| GET | `/places/top_nearby` | Top-bewertete in Radius |
-| GET | `/places/trending` | Trending (letzte N Tage) |
-| POST | `/places/by_osm/:id/visits` | Visit erstellen (Place wird auto-angelegt) |
-| POST | `/places/by_osm/:id/reviews` | Review upserten |
-| GET | `/places/by_osm/:id/summary` | Community-Summary |
-| GET | `/users/search` | Nutzer per Display-Name suchen |
-| GET | `/friends` | Freundschaften abrufen |
-| POST | `/friends/requests` | Freundschaftsanfrage senden |
-| POST | `/friends/requests/:id/accept` | Anfrage annehmen |
+| PATCH | `/users/me` | Anzeigename ändern |
+| DELETE | `/users/me` | Account löschen |
+| GET | `/places?minLat&minLon&maxLat&maxLon` | Läden im Kartenausschnitt |
+| GET | `/places/top?lat&lon` | Bestbewertete in der Nähe |
+| GET | `/places/trending` | Meiste Aktivität der letzten Tage |
+| GET | `/places/:placeId` | Laden (Google Place ID) |
+| GET | `/places/:placeId/reviews` | Bewertungen des Ladens |
+| GET | `/places/:placeId/summary` | Community-Zusammenfassung |
+| PUT | `/places/:placeId/review` | Eigene Bewertung speichern |
+| POST | `/places/:placeId/visits` | Check-in (idempotent über Client-ID) |
+| GET | `/me/visits`, `/me/reviews`, `/me/places` | Eigene Daten |
+| DELETE | `/me/live-status` | Live-Status beenden |
+| GET | `/feed?cursor` | Freunde-Feed (Keyset-Pagination) |
+| GET | `/feed/live` | Live-Status der Freunde |
+| GET | `/users/search?q` | Nutzer suchen |
+| GET | `/friends` | Freundschaften |
+| POST | `/friends/requests` | Anfrage senden |
+| POST | `/friends/:id/accept` | Anfrage annehmen |
 | DELETE | `/friends/:id` | Freundschaft entfernen |
-
-**Besonderheiten:**
-- Lazy Place Creation: Visits und Reviews legen den `DoenerPlace`-Eintrag bei Bedarf automatisch an
-- Aggregate werden nach jedem Review neu berechnet (avgRating, reviewCount)
-- Auth: Apple Identity Token wird dekodiert (HMAC-SHA256 Session-Token statt vapor/jwt — Kompatibilitätsproblem mit Swift-Toolchain)
+| POST | `/feedback` | Feedback mit optionalem Screenshot |
+| POST | `/shop-reports` | Fehlenden Laden melden |
 
 ---
 
-## Setup
+## Entwicklung
 
-### Backend lokal starten
+Voraussetzung: [Flutter-SDK](https://docs.flutter.dev/get-started/install) (bringt Dart mit) und Docker. iOS-Builds brauchen macOS – das übernimmt die CI, entwickelt werden kann komplett unter Linux.
 
-Voraussetzung: OrbStack oder Docker Desktop, Swift-Toolchain.
+### Alles in einem
 
 ```bash
-cd Backend
+docker compose up --build        # App + API auf http://localhost:8080, Postgres auf :5434
+```
 
-# Postgres starten (Port 5434, da 5432 ggf. belegt)
+Ohne `SMTP_HOST` landen die Login-Codes im Log (`docker compose logs app`).
+
+### Einzeln (schneller beim Entwickeln)
+
+```bash
 docker compose up -d db
 
-# Backend starten
-DB_PORT=5434 swift run App serve --hostname 0.0.0.0 --port 8080
+# Server
+cd server
+DB_PORT=5434 dart run tool/seed_dev.dart                    # Test-Läden, falls kein Google-Key
+DB_PORT=5434 CORS_ORIGIN=http://localhost:5000 dart run bin/server.dart
+
+# App im Browser
+cd app
+flutter run -d chrome --web-port 5000 --dart-define=API_BASE=http://localhost:8080/api/v1
+
+# App im Android-Emulator
+flutter run -d emulator-5554 --dart-define=API_BASE=http://10.0.2.2:8080/api/v1
 ```
 
-Das Backend ist dann unter `http://<Mac-LAN-IP>:8080` erreichbar.
+In der App lässt sich die Backend-URL auch unter Einstellungen → Backend-URL umstellen.
 
-### iOS-App
-
-1. Xcode öffnen: `open iOS/DoenerApp.xcodeproj`
-2. Backend-URL anpassen falls nötig: `iOS/DoenerApp/Core/Network/APIConfig.swift`
-   - Oder direkt in der App unter Settings → Backend-URL
-3. Signing-Team setzen (Free Provisioning reicht für Entwicklung)
-4. Auf echtem Gerät deployen (Simulator hat kein Sign-in with Apple)
-
-**Netzwerk-Hinweis:** iPhone und Mac müssen im gleichen WiFi sein. Die App erlaubt LAN-HTTP via `NSAllowsLocalNetworking` in der `Info.plist`.
-
-### Dev-Login (ohne Apple Account)
-
-Falls kein Sign-in with Apple verfügbar:
+### Tests
 
 ```bash
-# Backend starten mit Dev-Login aktiviert
-ALLOW_DEV_LOGIN=true DB_PORT=5434 swift run App serve --hostname 0.0.0.0 --port 8080
+cd packages/doener_models && dart test
+cd server && TEST_DB_PORT=5434 TEST_DB_USER=doener TEST_DB_PASSWORD=doener dart test   # legt DB doener_test neu an
+cd app && flutter test
 ```
 
-In der App unter Settings → Dev-Login erscheint dann ein zusätzlicher Login-Button.
+### Konfiguration
 
-### Test-Daten
+**Server (Umgebungsvariablen):**
 
-```bash
-# 5 Freundschaften für letzten User anlegen (entsperrt Social Butterfly Achievement)
-./scripts/seed_friendships.sh
-```
+| Variable | Standard | Zweck |
+|---|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | `localhost`, `5432`, `doener`, `doener`, `doener` | Postgres |
+| `DB_TLS` | – | `require` für TLS zur Datenbank |
+| `PORT` | `8080` | HTTP-Port |
+| `PUBLIC_URL` | `http://localhost:8080` | Basis für Magic-Links (`/login?token=…`) |
+| `GOOGLE_PLACES_API_KEY` | – | Ohne Key nur bereits bekannte Läden |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SSL` | –, `587` | Mailversand; ohne Host stehen Codes im Log |
+| `MAIL_FROM` | `Döner App <noreply@localhost>` | Absender |
+| `WEB_DIR` | `web` | Web-Build, der unter `/` ausgeliefert wird |
+| `CORS_ORIGIN` | – | Nur für lokale Web-Entwicklung |
+
+**App (`--dart-define`):**
+
+| Variable | Standard | Zweck |
+|---|---|---|
+| `API_BASE` | Web: gleiche Domain; Mobil: Produktion | API-Adresse |
+| `TILE_URL` | OSM-Standardkacheln | Kachel-Server für die Karte |
+
+---
+
+## Deployment
+
+| Workflow | Auslöser | Macht |
+|---|---|---|
+| `ci.yml` | PRs, Push auf `main` | Analyse + Tests für Models, Server (mit Postgres) und App |
+| `deploy.yml` | Push auf `main` (`server/`, `app/`, `packages/`) | arm64-Image `ghcr.io/robinchoice/doener-api:<sha>` bauen, auf Coolify deployen |
+| `mobile.yml` | Push auf `main` (`app/`, `packages/`), manuell | iOS → TestFlight, Android → signiertes App Bundle als Artefakt |
+
+Das Image enthält Server und Web-App: Die API liegt unter `/api/v1`, alles andere ist die Web-App.
+
+**Secrets:**
+- Coolify: `COOLIFY_APP_UUID`, `COOLIFY_TOKEN`
+- iOS: `ASC_KEY_P8` (Base64), `ASC_KEY_ID`, `ASC_ISSUER_ID`
+- Android: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` – ohne sie wird mit Debug-Keys signiert
+
+Die Build-Nummer steigt pro Lauf automatisch (TestFlight lehnt doppelte ab).
 
 ---
 
 ## Design-Prinzipien
 
-- **Glassmorphism:** `.ultraThinMaterial` durchgehend für Sheets und Overlays
-- **Orange als Akzentfarbe:** konsistent für alle interaktiven Elemente
-- **Spring-Physics:** Animationen basieren auf Spring-Kurven, nicht linearen Timings
-- **Offline-First:** Jede Aktion wird lokal gespeichert bevor sie das Netzwerk berührt
-- **Emoji als UI:** Statt Icon-Sets werden Emojis für Food-Types, Achievements und Confetti verwendet — spart Assets, wirkt lebendiger
+- **Orange als Akzentfarbe:** konsistent für alle interaktiven Elemente, Material 3, Hell- und Dunkelmodus
+- **Offline-First:** Jede Aktion wird lokal gespeichert, bevor sie das Netzwerk berührt
+- **Emoji als UI:** Essenstypen, Konfetti und Wrapped nutzen Emojis statt eigener Grafiken
+- **FOSS bevorzugt:** OpenStreetMap statt Apple/Google Maps, Web-Ressourcen selbst gehostet statt vom CDN
 
 ---
 
-## Roadmap
+## Offene Punkte
 
-Siehe [BACKLOG.md](BACKLOG.md) für den detaillierten Aufgabenstand.
-
-**Nächste Schritte (Sprint 3):**
-- Freunde-Feed: gemeinsamer Activity Stream
-- Push Notifications: Friend Requests, Freund bei bekanntem Laden
-- Leaderboards unter Freunden
-- TestFlight-Distribution (sobald Apple Developer Account aktiv)
+- Universal Links / App Links, damit der Magic-Link direkt die App öffnet (bis dahin: Code eintippen)
+- Upload ins Play Store (bisher nur das App Bundle als Artefakt)
+- Eigener Kachel-Server oder Anbieter statt der OSM-Standardkacheln für Produktions-Traffic
