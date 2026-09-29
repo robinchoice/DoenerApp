@@ -1,6 +1,7 @@
 name: Deploy API + Web
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -42,12 +43,19 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
 
       - name: Deploy to Coolify
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
         run: |
+          # Zeigt Status + Antwort, statt Fehler wie `curl -f` zu verschlucken.
+          coolify() {
+            status=$(curl -s -o response.txt -w '%{http_code}' -H "Authorization: Bearer $COOLIFY_TOKEN" "$@")
+            echo "HTTP $status: $(cat response.txt)"
+            [ "$status" -lt 300 ]
+          }
           # Coolify auf den konkreten Commit-SHA-Tag setzen (umgeht den 'latest'-Image-Cache,
           # der sonst das alte Image behält), dann force-deployen.
-          curl -sf -X PATCH "https://coolify.diespaetzles.lol/api/v1/applications/${{ secrets.COOLIFY_APP_UUID }}" \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}" \
+          coolify -X PATCH "https://coolify.diespaetzles.lol/api/v1/applications/$APP_UUID" \
             -H "Content-Type: application/json" \
             -d "{\"docker_registry_image_tag\": \"${{ github.sha }}\"}"
-          curl -sf "https://coolify.diespaetzles.lol/api/v1/deploy?uuid=${{ secrets.COOLIFY_APP_UUID }}&force=true" \
-            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"
+          coolify "https://coolify.diespaetzles.lol/api/v1/deploy?uuid=$APP_UUID&force=true"
