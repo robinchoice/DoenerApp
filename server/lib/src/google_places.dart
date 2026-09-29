@@ -4,8 +4,9 @@ import 'package:http/http.dart' as http;
 
 /// Places are discovered per map tile. A tile is searched at most once per
 /// [tileTtl] — the Google cost guard. Empty tiles are remembered as well.
+/// The TTL stays below Google's 30-day caching limit for place details.
 const tileSizeDeg = 0.03;
-const tileTtl = Duration(days: 30);
+const tileTtl = Duration(days: 25);
 const maxTilesPerRequest = 16;
 const _maxPagesPerTile = 3;
 
@@ -101,8 +102,21 @@ class GooglePlace {
   bool get looksLikeDoener => _namePattern.hasMatch(name) || types.any(_types.contains);
 }
 
-const _fieldMask = 'places.id,places.displayName,places.location,places.types,places.businessStatus,'
-    'places.addressComponents,places.regularOpeningHours,nextPageToken';
+const _placeFields = ['id', 'displayName', 'location', 'types', 'businessStatus', 'addressComponents', 'regularOpeningHours'];
+final _fieldMask = [..._placeFields.map((f) => 'places.$f'), 'nextPageToken'].join(',');
+
+/// Place Details (New). Returns null if Google no longer knows the place.
+Future<GooglePlace?> fetchPlace(http.Client client, String apiKey, String placeId) async {
+  final response = await client.get(
+    Uri.parse('https://places.googleapis.com/v1/places/${Uri.encodeComponent(placeId)}?languageCode=de'),
+    headers: {'x-goog-api-key': apiKey, 'x-goog-fieldmask': _placeFields.join(',')},
+  );
+  if (response.statusCode == 404) return null;
+  if (response.statusCode != 200) {
+    throw http.ClientException('Google Place Details ${response.statusCode}: ${response.body}');
+  }
+  return GooglePlace.fromJson(jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>);
+}
 
 /// Google Places API (New) text search restricted to [tile].
 Future<List<GooglePlace>> searchTile(http.Client client, String apiKey, Tile tile) async {

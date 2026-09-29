@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_data.dart';
+import '../../core/maps.dart';
 import '../../core/location.dart';
 import '../../ui/widgets.dart';
 import '../feed/feed_screen.dart';
@@ -115,6 +116,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       message: 'Checke bei Döner-Läden ein und bewerte sie, um Empfehlungen zu sehen.',
                       action: FilledButton(onPressed: widget.onOpenMap, child: const Text('Döner-Laden finden')),
                     ),
+                  if (_nearby.isNotEmpty || _trending.isNotEmpty) const GoogleAttribution(),
                 ],
               ),
             ),
@@ -192,9 +194,10 @@ class _SearchResults extends StatelessWidget {
     }
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: places.length,
+      itemCount: places.length + 1,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
+        if (i == places.length) return const GoogleAttribution();
         final p = places[i];
         return GlassCard(
           onTap: () => showPlaceDetail(context, p),

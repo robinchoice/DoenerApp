@@ -40,6 +40,15 @@ jobs:
           chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
 
       # Eindeutige, steigende Build-Nummer pro Lauf — TestFlight lehnt Duplikate ab.
+      # Ohne Key stürzt das Google Maps SDK beim Öffnen der Karte ab — dann lieber gar nicht bauen.
+      - name: Maps-Key ablegen
+        working-directory: app
+        env:
+          KEY: ${{ secrets.GOOGLE_MAPS_IOS_KEY }}
+        run: |
+          [ -n "$KEY" ] || { echo "Secret GOOGLE_MAPS_IOS_KEY fehlt"; exit 1; }
+          echo "GOOGLE_MAPS_IOS_KEY=$KEY" > ios/Flutter/Secrets.xcconfig
+
       - name: Flutter-Build vorbereiten
         working-directory: app
         run: flutter build ios --release --no-codesign --build-number=$((GITHUB_RUN_NUMBER + 10))
@@ -101,6 +110,8 @@ jobs:
 
       - name: App Bundle bauen
         working-directory: app
+        env:
+          GOOGLE_MAPS_ANDROID_KEY: ${{ secrets.GOOGLE_MAPS_ANDROID_KEY }}
         run: flutter build appbundle --release --build-number=$((GITHUB_RUN_NUMBER + 10))
 
       - uses: actions/upload-artifact@v4

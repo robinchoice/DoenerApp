@@ -24,6 +24,23 @@ void main() {
     expect(data.places.keys, ['p1']);
   });
 
+  test('cached places expire after 30 days', () async {
+    final db = await newDatabaseFactoryMemory().openDatabase('test.db');
+    final store = stringMapStoreFactory.store('places');
+    final now = DateTime.now();
+    await store.record('fresh').put(db, {'dto': _place.toJson(), 'cachedAt': now.millisecondsSinceEpoch});
+    await store.record('old').put(db, {
+      'dto': _place.toJson(),
+      'cachedAt': now.subtract(const Duration(days: 31)).millisecondsSinceEpoch,
+    });
+    await store.record('legacy').put(db, _place.toJson()); // format without timestamp
+
+    final data = AppData(db, Session(db));
+    await data.load();
+    expect(data.places.keys, ['fresh']);
+    expect(await store.count(db), 1);
+  });
+
   test('food counts are sorted by frequency', () {
     VisitDto visit(String? food) => VisitDto(
           id: '$food${DateTime.now().microsecondsSinceEpoch}',

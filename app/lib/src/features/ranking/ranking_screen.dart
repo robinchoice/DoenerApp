@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/app_data.dart';
+import '../../core/maps.dart';
 import '../../ui/widgets.dart';
 import '../place/place_detail.dart';
 
@@ -93,6 +94,7 @@ class _RankingScreenState extends State<RankingScreen> {
                       ),
                     ),
                   ),
+                const GoogleAttribution(),
               ],
             ),
     );

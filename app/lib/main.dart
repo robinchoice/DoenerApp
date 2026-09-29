@@ -9,6 +9,7 @@ import 'src/app.dart';
 import 'src/core/app_data.dart';
 import 'src/core/db_factory.dart';
 import 'src/core/location.dart';
+import 'src/core/maps.dart';
 import 'src/core/session.dart';
 import 'src/features/social/friends.dart';
 
@@ -16,6 +17,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
   await initializeDateFormatting('de');
+  await loadGoogleMapsScript(mapsWebKey);
 
   final db = await openLocalDatabase('doener.db');
   final session = Session(db);

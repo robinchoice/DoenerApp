@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 /// Freiburg — used until (or unless) the user shares their location.
 const fallbackLocation = LatLng(47.999, 7.842);

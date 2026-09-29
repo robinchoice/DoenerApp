@@ -14,7 +14,9 @@ COPY app/pubspec.* ./app/
 RUN cd app && flutter pub get
 COPY app ./app
 # Self-host CanvasKit and fonts instead of loading them from Google's CDN.
-RUN cd app && flutter build web --release --no-web-resources-cdn
+# Referrer-restricted browser key; it ends up in the public JS anyway.
+ARG GOOGLE_MAPS_WEB_KEY=""
+RUN cd app && flutter build web --release --no-web-resources-cdn --dart-define=GOOGLE_MAPS_WEB_KEY=$GOOGLE_MAPS_WEB_KEY
 
 FROM dart:3.13 AS server
 WORKDIR /src

@@ -31,6 +31,7 @@ void main() {
   }
 
   late Handler handler;
+  late Deps deps;
   late Pool<void> db;
   final mailer = CapturingMailer();
   var googleCalls = 0;
@@ -64,6 +65,18 @@ void main() {
 
     final google = MockClient((request) async {
       googleCalls++;
+      if (request.method == 'GET') {
+        // Place Details refresh.
+        return http.Response(
+          jsonEncode({
+            'id': request.url.pathSegments.last,
+            'displayName': {'text': 'Kebap Haus'},
+            'location': {'latitude': 48.0, 'longitude': 7.85},
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
       final body = jsonDecode(request.body) as Map<String, dynamic>;
       final low = body['locationRestriction']['rectangle']['low'] as Map<String, dynamic>;
       // Only the tile containing Freiburg's centre has shops.
@@ -97,7 +110,8 @@ void main() {
       return http.Response(jsonEncode({'places': places}), 200, headers: {'content-type': 'application/json'});
     });
 
-    handler = buildHandler(Deps(db: db, config: config, mailer: mailer, httpClient: google));
+    deps = Deps(db: db, config: config, mailer: mailer, httpClient: google);
+    handler = buildHandler(deps);
   });
 
   tearDownAll(() => db.close());
@@ -341,5 +355,20 @@ void main() {
       final (_, friends) = await call('GET', '/friends', token: bob);
       expect(friends, isEmpty);
     });
+  });
+
+  test('place cache stays within Google\'s 30 days', () async {
+    final (carla, _) = await signUp('carla@example.org', 'Carla');
+    await call('POST', '/places/place-kebap/visits',
+        body: {'id': '33333333-3333-4333-8333-333333333333', 'visitedAt': '2026-01-01T12:00:00Z'}, token: carla);
+    await db.execute("INSERT INTO places (google_place_id, name, latitude, longitude) VALUES ('place-unused', 'Alt', 48, 7.85)");
+    await db.execute("UPDATE places SET synced_at = now() - interval '31 days', name = 'Veraltet' "
+        "WHERE google_place_id IN ('place-kebap', 'place-unused')");
+
+    await maintainPlaceCache(deps);
+
+    final (_, kept) = await call('GET', '/places/place-kebap');
+    expect(kept['name'], 'Kebap Haus', reason: 'visited place is refreshed from Google');
+    expect((await call('GET', '/places/place-unused')).$1, 404, reason: 'unused stale place is dropped');
   });
 }

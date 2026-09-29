@@ -1,8 +1,7 @@
 import 'package:doener_models/doener_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -10,7 +9,7 @@ import '../../core/app_data.dart';
 import '../../core/session.dart';
 import '../../ui/widgets.dart';
 import '../auth/login_screen.dart';
-import '../map/map_screen.dart' show tileUrl;
+import '../../core/maps.dart';
 import 'check_in_sheet.dart';
 import 'review_sheet.dart';
 
@@ -258,26 +257,30 @@ class _PlaceDetailState extends State<PlaceDetail> {
             ),
         ],
         const SizedBox(height: 20),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: SizedBox(
-            height: 160,
-            child: IgnorePointer(
-              child: FlutterMap(
-                options: MapOptions(initialCenter: LatLng(place.latitude, place.longitude), initialZoom: 16),
-                children: [
-                  TileLayer(urlTemplate: tileUrl, userAgentPackageName: 'com.robinchoice.doener'),
-                  MarkerLayer(markers: [
+        if (mapsAvailable)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              height: 160,
+              child: IgnorePointer(
+                child: GoogleMap(
+                  initialCameraPosition: CameraPosition(target: LatLng(place.latitude, place.longitude), zoom: 16),
+                  liteModeEnabled: true,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  markers: {
                     Marker(
-                      point: LatLng(place.latitude, place.longitude),
-                      child: const Icon(Icons.location_on, color: doenerOrange, size: 36),
+                      markerId: MarkerId(place.placeId),
+                      position: LatLng(place.latitude, place.longitude),
+                      icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
                     ),
-                  ]),
-                ],
+                  },
+                ),
               ),
             ),
-          ),
-        ),
+          )
+        else
+          const GoogleAttribution(),
       ],
     );
   }

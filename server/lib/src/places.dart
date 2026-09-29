@@ -283,30 +283,65 @@ Future<void> _syncTile(Deps deps, String apiKey, Tile tile) async {
   try {
     final places = await searchTile(deps.httpClient, apiKey, tile);
     for (final p in places.where((p) => p.isOpenBusiness && p.looksLikeDoener)) {
-      await deps.db.execute(
-        Sql.named(
-          'INSERT INTO places (google_place_id, name, latitude, longitude, address, postal_code, city, opening_hours) '
-          'VALUES (@id, @name, @lat, @lon, @address, @postal, @city, @hours) '
-          'ON CONFLICT (google_place_id) DO UPDATE SET name = EXCLUDED.name, latitude = EXCLUDED.latitude, '
-          'longitude = EXCLUDED.longitude, address = EXCLUDED.address, postal_code = EXCLUDED.postal_code, '
-          'city = EXCLUDED.city, opening_hours = EXCLUDED.opening_hours, synced_at = now()',
-        ),
-        parameters: {
-          'id': p.id,
-          'name': p.name,
-          'lat': p.latitude,
-          'lon': p.longitude,
-          'address': p.address,
-          'postal': p.postalCode,
-          'city': p.city,
-          'hours': p.openingHours,
-        },
-      );
+      await _upsertPlace(deps, p);
     }
   } catch (e) {
     print('Tile ${tile.key} sync failed: $e');
     await deps.db.execute(Sql.named('DELETE FROM search_tiles WHERE tile_key = @key'), parameters: {'key': tile.key});
   }
+}
+
+Future<void> _upsertPlace(Deps deps, GooglePlace p) => deps.db.execute(
+      Sql.named(
+        'INSERT INTO places (google_place_id, name, latitude, longitude, address, postal_code, city, opening_hours) '
+        'VALUES (@id, @name, @lat, @lon, @address, @postal, @city, @hours) '
+        'ON CONFLICT (google_place_id) DO UPDATE SET name = EXCLUDED.name, latitude = EXCLUDED.latitude, '
+        'longitude = EXCLUDED.longitude, address = EXCLUDED.address, postal_code = EXCLUDED.postal_code, '
+        'city = EXCLUDED.city, opening_hours = EXCLUDED.opening_hours, synced_at = now()',
+      ),
+      parameters: {
+        'id': p.id,
+        'name': p.name,
+        'lat': p.latitude,
+        'lon': p.longitude,
+        'address': p.address,
+        'postal': p.postalCode,
+        'city': p.city,
+        'hours': p.openingHours,
+      },
+    );
+
+/// Keeps the place cache within Google's terms: details may be stored for at
+/// most 30 days (only the place ID indefinitely). Places with user activity
+/// are refreshed before that; untouched ones are dropped and come back when
+/// someone looks at the area again. Runs daily.
+Future<void> maintainPlaceCache(Deps deps) async {
+  const activity = 'EXISTS (SELECT 1 FROM reviews r WHERE r.place_id = p.id) '
+      'OR EXISTS (SELECT 1 FROM visits v WHERE v.place_id = p.id) '
+      'OR EXISTS (SELECT 1 FROM users u WHERE u.live_place_id = p.id)';
+
+  final apiKey = deps.config.googlePlacesApiKey;
+  if (apiKey != null) {
+    final stale = await query(
+      deps.db,
+      "SELECT google_place_id FROM places p WHERE synced_at < now() - interval '25 days' AND ($activity)",
+    );
+    for (final row in stale) {
+      final id = row['google_place_id'] as String;
+      try {
+        final place = await fetchPlace(deps.httpClient, apiKey, id);
+        if (place != null) await _upsertPlace(deps, place);
+      } catch (e) {
+        print('Refreshing place $id failed: $e');
+      }
+    }
+  }
+
+  final deleted = await query(
+    deps.db,
+    "DELETE FROM places p WHERE synced_at < now() - interval '30 days' AND NOT ($activity) RETURNING id",
+  );
+  if (deleted.isNotEmpty) print('Place cache: dropped ${deleted.length} places older than 30 days');
 }
 
 (double, double) _degreeDeltas(double lat, double radiusMeters) {

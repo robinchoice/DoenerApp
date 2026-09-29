@@ -9,7 +9,7 @@ Eine App zum Finden, Bewerten und Sammeln von Dönerläden – für iOS, Android
 Die Döner-App verbindet eine persönliche Stempelkarte mit einem sozialen Layer: Nutzer checken bei Läden ein, bewerten nach Soße/Fleisch/Brot, verfolgen ihre eigene Döner-Geschichte und sehen, was Freunde gerade essen.
 
 **Stack:**
-- App: Flutter (iOS, Android, Web), flutter_map mit OpenStreetMap-Kacheln, sembast als lokaler Store
+- App: Flutter (iOS, Android, Web), Google Maps (google_maps_flutter), sembast als lokaler Store
 - Server: Dart (shelf), PostgreSQL – liefert auch die Web-App aus
 - Geteilt: `packages/doener_models` – DTOs, Validierung und Gamification-Regeln für App und Server
 - Läden: Google Places API (New), serverseitig abgefragt und gecacht
@@ -21,9 +21,11 @@ Die Döner-App verbindet eine persönliche Stempelkarte mit einem sozialen Layer
 
 ### Karte
 
-Die Karte lädt Dönerläden für den sichtbaren Ausschnitt (nur bis 0,5° Span). Der Server fragt Google pro Kachel (0,03°) höchstens alle 30 Tage ab, auch leere Kacheln werden gemerkt. Das hält die Google-Kosten klein. Erkannt werden Läden über den Namen (Döner, Kebap, Dürüm, Yufka …) oder den Google-Typ (z. B. türkisches Restaurant).
+Die Karte lädt Dönerläden für den sichtbaren Ausschnitt (nur bis 0,5° Span). Der Server fragt Google pro Kachel (0,03°) höchstens alle 25 Tage ab, auch leere Kacheln werden gemerkt. Das hält die Google-Kosten klein. Erkannt werden Läden über den Namen (Döner, Kebap, Dürüm, Yufka …) oder den Google-Typ (z. B. türkisches Restaurant).
 
-- Pins zeigen den lokalen Besuchszähler, besuchte Läden sind grün, Favoriten pink
+Google erlaubt, Laden-Details höchstens 30 Tage zu speichern (nur die Place ID unbegrenzt) und Places-Daten nur auf Google-Karten zu zeigen. Deshalb: Karte von Google Maps, ein täglicher Job auf dem Server frischt Läden mit Besuchen oder Bewertungen auf und löscht ungenutzte nach 30 Tagen, die App verwirft ihren lokalen Cache ebenso. Listen ohne Karte tragen den Hinweis „Ortsdaten: Google Maps“.
+
+- Pins: orange, besuchte Läden grün, Favoriten pink; fremde Geschäfts-POIs sind ausgeblendet
 - Favoriten-Filter per Herz oben rechts
 - „Laden fehlt?“ oben links schickt eine Meldung samt Kartenposition an den Server
 
@@ -171,11 +173,14 @@ DB_PORT=5434 CORS_ORIGIN=http://localhost:5000 dart run bin/server.dart
 
 # App im Browser
 cd app
-flutter run -d chrome --web-port 5000 --dart-define=API_BASE=http://localhost:8080/api/v1
+flutter run -d chrome --web-port 5000 --dart-define=API_BASE=http://localhost:8080/api/v1 \
+  --dart-define=GOOGLE_MAPS_WEB_KEY=<Browser-Key>
 
 # App im Android-Emulator
-flutter run -d emulator-5554 --dart-define=API_BASE=http://10.0.2.2:8080/api/v1
+GOOGLE_MAPS_ANDROID_KEY=<Android-Key> flutter run -d emulator-5554 --dart-define=API_BASE=http://10.0.2.2:8080/api/v1
 ```
+
+Für iOS den Key in `app/ios/Flutter/Secrets.xcconfig` eintragen (`GOOGLE_MAPS_IOS_KEY=…`, nicht eingecheckt).
 
 In der App lässt sich die Backend-URL auch unter Einstellungen → Backend-URL umstellen.
 
@@ -208,7 +213,9 @@ cd app && flutter test
 | Variable | Standard | Zweck |
 |---|---|---|
 | `API_BASE` | Web: gleiche Domain; Mobil: Produktion | API-Adresse |
-| `TILE_URL` | OSM-Standardkacheln | Kachel-Server für die Karte |
+| `GOOGLE_MAPS_WEB_KEY` | – | Maps-JavaScript-Key für die Web-Version (ohne: keine Karte) |
+
+**Google-Maps-Keys** (Google Cloud Console, je ein Key pro Plattform): „Maps SDK for iOS“ (eingeschränkt auf Bundle-ID `com.robinchoice.doener`), „Maps SDK for Android“ (Paketname + SHA-1 des Signaturzertifikats), „Maps JavaScript API“ (HTTP-Referrer der Web-Domain). Der Server braucht zusätzlich einen Key für „Places API (New)“.
 
 ---
 
@@ -224,6 +231,7 @@ Das Image enthält Server und Web-App: Die API liegt unter `/api/v1`, alles ande
 
 **Secrets:**
 - Coolify: `COOLIFY_APP_UUID`, `COOLIFY_TOKEN`
+- Google Maps: `GOOGLE_MAPS_IOS_KEY`, `GOOGLE_MAPS_ANDROID_KEY`, `GOOGLE_MAPS_WEB_KEY`
 - iOS: `ASC_KEY_P8` (Base64), `ASC_KEY_ID`, `ASC_ISSUER_ID`
 - Android: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` – ohne sie wird mit Debug-Keys signiert
 
@@ -236,7 +244,7 @@ Die Build-Nummer steigt pro Lauf automatisch (TestFlight lehnt doppelte ab).
 - **Orange als Akzentfarbe:** konsistent für alle interaktiven Elemente, Material 3, Hell- und Dunkelmodus
 - **Offline-First:** Jede Aktion wird lokal gespeichert, bevor sie das Netzwerk berührt
 - **Emoji als UI:** Essenstypen, Konfetti und Wrapped nutzen Emojis statt eigener Grafiken
-- **FOSS bevorzugt:** OpenStreetMap statt Apple/Google Maps, Web-Ressourcen selbst gehostet statt vom CDN
+- **FOSS, wo es geht:** Flutter, Dart, Postgres, Web-Ressourcen selbst gehostet statt vom CDN. Karte und Laden-Daten kommen von Google, weil OpenStreetMap deutlich weniger Döner-Läden und Öffnungszeiten kennt.
 
 ---
 
@@ -244,4 +252,3 @@ Die Build-Nummer steigt pro Lauf automatisch (TestFlight lehnt doppelte ab).
 
 - Universal Links / App Links, damit der Magic-Link direkt die App öffnet (bis dahin: Code eintippen)
 - Upload ins Play Store (bisher nur das App Bundle als Artefakt)
-- Eigener Kachel-Server oder Anbieter statt der OSM-Standardkacheln für Produktions-Traffic

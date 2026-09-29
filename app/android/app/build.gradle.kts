@@ -35,6 +35,9 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // Maps SDK key from the environment (CI secret) or `-PGOOGLE_MAPS_ANDROID_KEY=…`.
+        manifestPlaceholders["googleMapsKey"] =
+            System.getenv("GOOGLE_MAPS_ANDROID_KEY") ?: (project.findProperty("GOOGLE_MAPS_ANDROID_KEY") as String? ?: "")
     }
 
     signingConfigs {

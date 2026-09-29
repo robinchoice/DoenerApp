@@ -7,6 +7,8 @@ import 'api.dart';
 import 'session.dart';
 
 final _places = stringMapStoreFactory.store('places');
+
+const placeCacheMaxAge = Duration(days: 30);
 final _visits = stringMapStoreFactory.store('visits');
 final _reviews = stringMapStoreFactory.store('reviews');
 final _queue = intMapStoreFactory.store('queue');
@@ -45,9 +47,19 @@ class AppData extends ChangeNotifier {
   String? lastSyncError;
 
   Future<void> load() async {
+    // Google allows caching place details for at most 30 days; older entries
+    // (and entries from builds without a timestamp) are refetched on demand.
+    final cutoff = DateTime.now().subtract(placeCacheMaxAge).millisecondsSinceEpoch;
+    final expired = <String>[];
     for (final r in await _places.find(_db)) {
-      places[r.key] = PlaceDto.fromJson(r.value.cast<String, dynamic>());
+      final cachedAt = r.value['cachedAt'] as int?;
+      if (cachedAt == null || cachedAt < cutoff) {
+        expired.add(r.key);
+      } else {
+        places[r.key] = PlaceDto.fromJson((r.value['dto'] as Map).cast<String, dynamic>());
+      }
     }
+    await _places.records(expired).delete(_db);
     for (final r in await _favorites.find(_db)) {
       favorites.add(r.key);
     }
@@ -89,7 +101,7 @@ class AppData extends ChangeNotifier {
     await _db.transaction((tx) async {
       for (final p in list) {
         places[p.placeId] = p;
-        await _places.record(p.placeId).put(tx, p.toJson());
+        await _places.record(p.placeId).put(tx, {'dto': p.toJson(), 'cachedAt': DateTime.now().millisecondsSinceEpoch});
       }
     });
     notifyListeners();
