@@ -60,4 +60,4 @@ jobs:
           coolify -X PATCH "https://coolify.diespaetzles.lol/api/v1/applications/$APP_UUID" \
             -H "Content-Type: application/json" \
             -d "{\"docker_registry_image_tag\": \"${{ github.sha }}\"}"
-          coolify "https://coolify.diespaetzles.lol/api/v1/deploy?uuid=$APP_UUID&force=true"
+          coolify -X POST "https://coolify.diespaetzles.lol/api/v1/deploy?uuid=$APP_UUID&force=true"
