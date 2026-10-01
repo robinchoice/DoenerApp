@@ -68,6 +68,7 @@ Future<Map<String, dynamic>> _requirePlace(Deps deps, String placeId) async {
 void mountPlaces(Router router, Deps deps) {
   // GET /places?minLat&minLon&maxLat&maxLon — places in the visible map area.
   router.get('/places', (Request request) async {
+    final user = await requireUser(deps, request);
     final minLat = queryDouble(request, 'minLat');
     final minLon = queryDouble(request, 'minLon');
     final maxLat = queryDouble(request, 'maxLat');
@@ -79,7 +80,7 @@ void mountPlaces(Router router, Deps deps) {
     final apiKey = deps.config.googlePlacesApiKey;
     if (apiKey != null && maxLat - minLat <= _maxSyncSpanDeg && maxLon - minLon <= _maxSyncSpanDeg) {
       final tiles = tilesCovering(minLat: minLat, minLon: minLon, maxLat: maxLat, maxLon: maxLon);
-      if (tiles.length <= maxTilesPerRequest) await Future.wait(tiles.map((t) => _syncTile(deps, apiKey, t)));
+      if (tiles.length <= maxTilesPerRequest) await Future.wait(tiles.map((t) => _syncTile(deps, apiKey, t, user.id)));
     }
 
     final rows = await query(
@@ -269,7 +270,7 @@ void mountPlaces(Router router, Deps deps) {
   });
 }
 
-Future<void> _syncTile(Deps deps, String apiKey, Tile tile) async {
+Future<void> _syncTile(Deps deps, String apiKey, Tile tile, String userId) async {
   // Atomically claim the tile so concurrent requests don't both pay Google.
   final claimed = await queryOne(
     deps.db,
@@ -279,6 +280,20 @@ Future<void> _syncTile(Deps deps, String apiKey, Tile tile) async {
     {'key': tile.key, 'ttl': tileTtl.inDays},
   );
   if (claimed == null) return;
+
+  // Counted atomically as well — parallel tiles and requests can't overshoot the limit.
+  final counted = await queryOne(
+    deps.db,
+    'INSERT INTO daily_searches (user_id, day, count) VALUES (@user:uuid, current_date, 1) '
+    'ON CONFLICT (user_id, day) DO UPDATE SET count = daily_searches.count + 1 '
+    'WHERE daily_searches.count < @max:int4 RETURNING count',
+    {'user': userId, 'max': maxTileSearchesPerDay},
+  );
+  if (counted == null) {
+    // Limit reached: hand the tile back for the next user.
+    await deps.db.execute(Sql.named('DELETE FROM search_tiles WHERE tile_key = @key'), parameters: {'key': tile.key});
+    return;
+  }
 
   try {
     final places = await searchTile(deps.httpClient, apiKey, tile);

@@ -6,6 +6,7 @@ import 'dart:io';
 
 import 'package:doener_models/doener_models.dart';
 import 'package:doener_server/doener_server.dart';
+import 'package:doener_server/src/google_places.dart' show maxTileSearchesPerDay;
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:postgres/postgres.dart';
@@ -222,18 +223,38 @@ void main() {
 
     test('map area sync filters and caches Google results', () async {
       const bbox = '/places?minLat=47.99&minLon=7.84&maxLat=48.01&maxLon=7.86';
-      final (status, body) = await call('GET', bbox);
+      final (status, body) = await call('GET', bbox, token: anna);
       expect(status, 200);
       expect((body as List).map((p) => p['placeId']), ['place-kebap']);
       expect(body.single['city'], 'Berlin');
       final callsAfterFirst = googleCalls;
       expect(callsAfterFirst, greaterThan(0));
 
-      await call('GET', bbox);
+      await call('GET', bbox, token: bob);
       expect(googleCalls, callsAfterFirst, reason: 'tiles are cached, including empty ones');
 
-      expect((await call('GET', '/places?minLat=10&minLon=10&maxLat=5&maxLon=11')).$1, 400);
+      expect((await call('GET', '/places?minLat=10&minLon=10&maxLat=5&maxLon=11', token: anna)).$1, 400);
       expect((await call('GET', '/places/unknown')).$1, 404);
+    });
+
+    test('Google searches need a login and are capped per user and day', () async {
+      final (carl, _) = await signUp('carl@example.org', 'Carl');
+      final (dora, _) = await signUp('dora@example.org', 'Dora');
+      // Two areas of 4×4 empty tiles — each tile costs exactly one search.
+      const first = '/places?minLat=10.001&minLon=10.001&maxLat=10.1&maxLon=10.1';
+      const second = '/places?minLat=10.001&minLon=10.121&maxLat=10.1&maxLon=10.22';
+      final before = googleCalls;
+
+      expect((await call('GET', first)).$1, 401);
+      expect(googleCalls, before);
+
+      expect((await call('GET', first, token: carl)).$1, 200);
+      expect((await call('GET', second, token: carl)).$1, 200, reason: 'known places are still served');
+      expect(googleCalls - before, maxTileSearchesPerDay);
+
+      // Tiles Carl couldn't search stay open for others.
+      expect((await call('GET', second, token: dora)).$1, 200);
+      expect(googleCalls - before, 32);
     });
 
     test('visits are idempotent and only fresh ones go live', () async {

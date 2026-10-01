@@ -10,6 +10,10 @@ const tileTtl = Duration(days: 25);
 const maxTilesPerRequest = 16;
 const _maxPagesPerTile = 3;
 
+/// Tiles one user may have searched per day; cached tiles don't count.
+/// Beyond that, the map only shows places that are already known.
+const maxTileSearchesPerDay = 20;
+
 class Tile {
   final int x;
   final int y;

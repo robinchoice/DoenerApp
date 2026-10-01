@@ -141,6 +141,15 @@ final migrations = <List<String>>[
     // Whose link brought a new account in — to measure how invites spread.
     'ALTER TABLE users ADD COLUMN invited_by uuid REFERENCES users (id) ON DELETE SET NULL',
   ],
+  [
+    // Google tile searches per user and day — caps what a single account can cost.
+    '''CREATE TABLE daily_searches (
+      user_id uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+      day date NOT NULL,
+      count int NOT NULL,
+      PRIMARY KEY (user_id, day)
+    )''',
+  ],
 ];
 
 Future<void> migrate(Pool<void> db) async {
