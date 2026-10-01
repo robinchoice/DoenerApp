@@ -6,27 +6,14 @@ import '../../core/api.dart';
 import '../../core/app_data.dart';
 import '../../core/session.dart';
 import '../../ui/widgets.dart';
-
-/// Opens the login flow; resolves to true when the user is logged in.
-Future<bool> showLogin(BuildContext context) async {
-  final ok = await Navigator.of(context).push<bool>(
-    MaterialPageRoute(fullscreenDialog: true, builder: (_) => const LoginScreen()),
-  );
-  return ok ?? false;
-}
-
-/// Makes sure there is a session before an account action; asks to log in otherwise.
-Future<bool> ensureLoggedIn(BuildContext context) async {
-  if (context.read<Session>().isLoggedIn) return true;
-  return showLogin(context);
-}
+import '../social/invite.dart';
 
 /// Logs in with a magic-link token (web: `/login?token=…`).
-Future<void> completeLinkLogin(BuildContext context, String token) async {
+Future<void> completeLinkLogin(BuildContext context, String token, {String? inviteCode}) async {
   final session = context.read<Session>();
   final data = context.read<AppData>();
   try {
-    final response = await session.verify(VerifyRequest(token: token));
+    final response = await session.verify(VerifyRequest(token: token, inviteCode: inviteCode));
     await data.onSignedIn(response.user.id);
     if (context.mounted) showMessage(context, 'Angemeldet als ${response.user.displayName}');
   } catch (e) {
@@ -34,9 +21,12 @@ Future<void> completeLinkLogin(BuildContext context, String token) async {
   }
 }
 
+/// Without an account there is nothing to do in the app — this screen stands
+/// in front of everything until the user is logged in.
 class LoginScreen extends StatefulWidget {
-  final bool showSkip;
-  const LoginScreen({super.key, this.showSkip = true});
+  /// Code of the invite link that brought the user here, if any.
+  final String? inviteCode;
+  const LoginScreen({super.key, this.inviteCode});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -64,9 +54,9 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       await action();
     } on ApiException catch (e) {
-      setState(() => _error = e.message);
+      if (mounted) setState(() => _error = e.message);
     } on OfflineException catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -78,29 +68,23 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _codeSent = true);
       });
 
+  // Once the session is set, the app moves on by itself — this screen disappears.
   Future<void> _verify() => _run(() async {
         final session = context.read<Session>();
         final data = context.read<AppData>();
-        final response = await session.verify(
-          VerifyRequest(email: Validation.normalizeEmail(_email.text), code: _code.text.trim()),
-        );
+        final response = await session.verify(VerifyRequest(
+          email: Validation.normalizeEmail(_email.text),
+          code: _code.text.trim(),
+          inviteCode: widget.inviteCode,
+        ));
         await data.onSignedIn(response.user.id);
-        if (!mounted) return;
-        if (response.isNewUser) {
-          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ChooseNameScreen()));
-        }
-        if (mounted) Navigator.of(context).pop(true);
       });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final expired = context.watch<Session>().expired;
     return Scaffold(
-      appBar: AppBar(
-        actions: [
-          if (widget.showSkip) TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Später')),
-        ],
-      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -113,12 +97,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: ClipOval(child: Image.asset('assets/logo.jpg', width: 96, height: 96, fit: BoxFit.cover)),
                 ),
                 const SizedBox(height: 20),
+                if (widget.inviteCode != null) ...[
+                  InviterBanner(code: widget.inviteCode!),
+                  const SizedBox(height: 16),
+                ],
                 Text('Anmelden', style: theme.textTheme.headlineSmall, textAlign: TextAlign.center),
                 const SizedBox(height: 8),
                 Text(
                   _codeSent
                       ? 'Wir haben dir einen 6-stelligen Code geschickt. Du kannst auch einfach auf den Link in der Mail tippen.'
-                      : 'Kein Passwort nötig – wir schicken dir einen Code per Mail. Damit kannst du Freunde hinzufügen und Erfolge sammeln.',
+                      : expired
+                          ? 'Deine Sitzung ist abgelaufen. Ungesendete Einträge bleiben gespeichert, bis du dich wieder anmeldest.'
+                          : 'Kein Passwort nötig – wir schicken dir einen Code per Mail. Damit sehen deine Freunde, wo du Döner isst.',
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline),
                 ),
@@ -170,7 +160,8 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-/// Shown once after sign-up so the user replaces the generated name.
+/// Stands in front of the app while the account still has its generated name —
+/// friends should see who checked in, not "Döner-Fan-4821".
 class ChooseNameScreen extends StatefulWidget {
   const ChooseNameScreen({super.key});
 
@@ -195,37 +186,30 @@ class _ChooseNameScreenState extends State<ChooseNameScreen> {
     setState(() => _busy = true);
     try {
       await context.read<Session>().updateDisplayName(_name.text.trim());
-      if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      setState(() => _error = e.toString());
+      if (mounted) setState(() => _error = e.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final current = context.watch<Session>().user?.displayName ?? '';
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Wie heißt du?'),
-        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Überspringen'))],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Text('Unter diesem Namen finden dich deine Freunde. Aktuell: $current'),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _name,
-            autofocus: true,
-            maxLength: Validation.displayNameMax,
-            decoration: InputDecoration(labelText: 'Anzeigename', errorText: _error),
-            onSubmitted: (_) => _save(),
-          ),
-          FilledButton(onPressed: _busy ? null : _save, child: const Text('Speichern')),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Wie heißt du?')),
+        body: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            const Text('Unter diesem Namen sehen dich deine Freunde, wenn du eincheckst.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _name,
+              autofocus: true,
+              maxLength: Validation.displayNameMax,
+              decoration: InputDecoration(labelText: 'Anzeigename', errorText: _error),
+              onSubmitted: (_) => _save(),
+            ),
+            FilledButton(onPressed: _busy ? null : _save, child: const Text('Weiter')),
+          ],
+        ),
+      );
 }

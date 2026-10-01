@@ -8,7 +8,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/app_data.dart';
 import '../../core/session.dart';
 import '../../ui/widgets.dart';
-import '../auth/login_screen.dart';
 import '../../core/maps.dart';
 import 'check_in_sheet.dart';
 import 'review_sheet.dart';
@@ -49,13 +48,9 @@ class _PlaceDetailState extends State<PlaceDetail> {
     );
   }
 
-  Future<void> _checkIn(PlaceDto place) async {
-    if (!await ensureLoggedIn(context) || !mounted) return;
-    await showAppSheet(context, (_) => CheckInSheet(place: place));
-  }
+  Future<void> _checkIn(PlaceDto place) => showAppSheet(context, (_) => CheckInSheet(place: place));
 
   Future<void> _review(PlaceDto place) async {
-    if (!await ensureLoggedIn(context) || !mounted) return;
     final saved = await showAppSheet<bool>(context, (_) => ReviewSheet(place: place));
     if (saved == true && mounted) {
       final data = context.read<AppData>();

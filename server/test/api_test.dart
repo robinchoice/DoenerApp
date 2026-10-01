@@ -357,6 +357,76 @@ void main() {
     });
   });
 
+  group('invites', () {
+    test('opening the link makes friends without a request', () async {
+      final (ina, inaUser) = await signUp('ina@example.org', 'Ina');
+      final (status, invite) = await call('GET', '/me/invite', token: ina);
+      expect(status, 200);
+      final code = invite['code'] as String;
+      expect(invite['url'], 'https://doener.test/i/$code');
+      expect((await call('GET', '/me/invite', token: ina)).$2['code'], code, reason: 'stays until reset');
+      expect((await call('GET', '/invites/$code')).$2['displayName'], 'Ina');
+
+      // A new account remembers whose link brought it in.
+      await call('POST', '/auth/login', body: {'email': 'jan@example.org'});
+      final (_, auth) = await call('POST', '/auth/verify', body: {'email': 'jan@example.org', 'code': lastCode(), 'inviteCode': code});
+      final jan = auth['token'] as String;
+      final invitedBy = await db.execute(
+        Sql.named('SELECT invited_by FROM users WHERE id = @id:uuid'),
+        parameters: {'id': auth['user']['id']},
+      );
+      expect(invitedBy.single.single, inaUser.id);
+
+      final (accepted, friendship) = await call('POST', '/invites/$code/accept', token: jan);
+      expect(accepted, 200);
+      expect(friendship['status'], 'accepted');
+      expect(friendship['user']['id'], inaUser.id);
+      final (_, inasFriends) = await call('GET', '/friends', token: ina);
+      expect((inasFriends as List).single['status'], 'accepted');
+      expect((await call('POST', '/invites/$code/accept', token: jan)).$1, 200, reason: 'opening it twice is harmless');
+
+      expect((await call('POST', '/invites/$code/accept', token: ina)).$1, 400);
+      expect((await call('POST', '/invites/$code/accept')).$1, 401);
+      expect((await call('POST', '/invites/unknown/accept', token: jan)).$1, 404);
+    });
+
+    test('the link settles an open request, a reset kills the old link', () async {
+      final (kai, kaiUser) = await signUp('kai@example.org', 'Kai');
+      final (lea, _) = await signUp('lea@example.org', 'Lea');
+      await call('POST', '/friends/requests', body: {'userId': kaiUser.id}, token: lea);
+
+      final (_, invite) = await call('GET', '/me/invite', token: kai);
+      final (_, friendship) = await call('POST', '/invites/${invite['code']}/accept', token: lea);
+      expect(friendship['status'], 'accepted');
+
+      final (_, fresh) = await call('POST', '/me/invite/reset', token: kai);
+      expect(fresh['code'], isNot(invite['code']));
+      expect((await call('GET', '/invites/${invite['code']}')).$1, 404);
+      expect((await call('GET', '/invites/${fresh['code']}')).$1, 200);
+    });
+
+    test('invite page previews the inviter without injecting markup', () async {
+      final (nora, _) = await signUp('nora@example.org', '<i>Nora</i>');
+      final code = (await call('GET', '/me/invite', token: nora)).$2['code'] as String;
+
+      Future<(int, String)> page(String path) async {
+        final response = await handler(Request('GET', Uri.parse('http://localhost$path')));
+        return (response.statusCode, await response.readAsString());
+      }
+
+      final (status, html) = await page('/i/$code');
+      expect(status, 200);
+      expect(html, contains('<meta property="og:title" content="&lt;i&gt;Nora&lt;/i&gt; lädt dich in die Döner App ein">'));
+      expect(html, isNot(contains('<i>Nora')));
+      expect(html, contains('<meta property="og:image" content="https://doener.test/icons/Icon-512.png">'));
+      expect(html, contains('href="/?invite=$code"'));
+
+      final (missing, notFound) = await page('/i/%3Cscript%3E');
+      expect(missing, 404);
+      expect(notFound, isNot(contains('<script')));
+    });
+  });
+
   test('place cache stays within Google\'s 30 days', () async {
     final (carla, _) = await signUp('carla@example.org', 'Carla');
     await call('POST', '/places/place-kebap/visits',

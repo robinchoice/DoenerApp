@@ -6,6 +6,11 @@ import 'package:provider/provider.dart';
 
 import '../../core/session.dart';
 import '../../ui/widgets.dart';
+import 'invite.dart';
+
+/// Invite code from a link opened before the user was signed in — accepted
+/// right after the login (and the choice of a name).
+final pendingInviteRecord = settingsStore.record('pendingInvite');
 
 class Friends extends ChangeNotifier {
   final Session _session;
@@ -50,6 +55,24 @@ class Friends extends ChangeNotifier {
         await _session.api.delete('/friends/$id');
         all = all.where((x) => x.id != id).toList();
       });
+
+  Future<InviteDto> fetchInvite() async => InviteDto.fromJson(await _session.api.get('/me/invite') as Map<String, dynamic>);
+
+  /// New link; the old one stops working.
+  Future<InviteDto> resetInvite() async =>
+      InviteDto.fromJson(await _session.api.post('/me/invite/reset') as Map<String, dynamic>);
+
+  Future<UserDto> inviter(String code) async =>
+      UserDto.fromJson(await _session.api.get('/invites/${Uri.encodeComponent(code)}') as Map<String, dynamic>);
+
+  /// Opening someone's invite link makes you friends right away.
+  Future<FriendshipDto> acceptInvite(String code) async {
+    final json = await _session.api.post('/invites/${Uri.encodeComponent(code)}/accept');
+    final friendship = FriendshipDto.fromJson(json as Map<String, dynamic>);
+    all = [friendship, ...all.where((x) => x.id != friendship.id)];
+    notifyListeners();
+    return friendship;
+  }
 
   Future<void> _guard(Future<void> Function() action) async {
     error = null;
@@ -100,6 +123,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
         child: ListView(
           children: [
             if (friends.error != null) ListTile(leading: const Icon(Icons.error_outline), title: Text(friends.error!)),
+            ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.qr_code_2)),
+              title: const Text('Freunde einladen'),
+              subtitle: const Text('Wer deinen Link öffnet, ist sofort mit dir befreundet.'),
+              onTap: () => showAppSheet(context, (_) => const InviteSheet()),
+            ),
             if (friends.incoming.isNotEmpty) ...[
               header('Anfragen'),
               for (final f in friends.incoming)

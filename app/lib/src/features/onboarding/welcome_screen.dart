@@ -3,10 +3,14 @@ import 'package:provider/provider.dart';
 
 import '../../core/location.dart';
 import '../../ui/widgets.dart';
+import '../social/invite.dart';
 
 class WelcomeScreen extends StatefulWidget {
   final VoidCallback onDone;
-  const WelcomeScreen({super.key, required this.onDone});
+
+  /// Invite link that brought the user here, if any.
+  final String? inviteCode;
+  const WelcomeScreen({super.key, required this.onDone, this.inviteCode});
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
@@ -68,6 +72,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                         top: ClipOval(child: Image.asset('assets/logo.jpg', width: 140, height: 140, fit: BoxFit.cover)),
                         title: 'Döner App',
                         text: 'Finde, bewerte und sammle deine liebsten Döner-Läden.',
+                        extra: widget.inviteCode == null ? null : InviterBanner(code: widget.inviteCode!),
                       ),
                       page(
                         top: Icon(

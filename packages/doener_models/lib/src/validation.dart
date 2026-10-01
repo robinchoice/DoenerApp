@@ -9,7 +9,11 @@ abstract final class Validation {
   static const feedbackMax = 5000;
   static const shopNameMin = 2;
 
+  /// New accounts get a placeholder name with this prefix until the user picks one.
+  static const generatedNamePrefix = 'Döner-Fan-';
+
   static final _email = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+  static final _generatedName = RegExp('^$generatedNamePrefix\\d+\$');
 
   static String normalizeEmail(String email) => email.trim().toLowerCase();
 
@@ -24,8 +28,12 @@ abstract final class Validation {
     if (trimmed.length < displayNameMin || trimmed.length > displayNameMax) {
       return '$displayNameMin bis $displayNameMax Zeichen.';
     }
+    if (isGeneratedName(trimmed)) return 'Bitte wähle einen eigenen Namen.';
     return null;
   }
+
+  /// True for the placeholder name a new account starts with.
+  static bool isGeneratedName(String name) => _generatedName.hasMatch(name.trim());
 
   static bool isValidRating(int? value) => value == null || (value >= 1 && value <= 5);
 

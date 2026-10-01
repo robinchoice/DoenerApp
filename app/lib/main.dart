@@ -26,8 +26,14 @@ Future<void> main() async {
   await data.load();
   final onboardingDone = await settingsStore.record('onboardingDone').get(db) == true;
 
-  // Magic link opened in the browser: https://…/login?token=…
+  // Links opened in the browser: magic link (https://…/login?token=…) and
+  // invite (https://…/?invite=…). The invite is kept until it is accepted —
+  // the login via magic link continues in a new tab.
   final linkToken = kIsWeb && Uri.base.path == '/login' ? Uri.base.queryParameters['token'] : null;
+  final inviteFromLink = kIsWeb ? Uri.base.queryParameters['invite'] : null;
+  if (inviteFromLink != null) await pendingInviteRecord.put(db, inviteFromLink);
+  final inviteCode = await pendingInviteRecord.get(db) as String?;
+  final invitePromptDone = await settingsStore.record('invitePromptDone').get(db) == true;
 
   // Don't block startup on the network.
   session.refresh().then((_) async {
@@ -44,7 +50,12 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => LocationService()),
         ChangeNotifierProvider(create: (_) => Friends(session)),
       ],
-      child: DoenerApp(onboardingDone: onboardingDone || linkToken != null, linkToken: linkToken),
+      child: DoenerApp(
+        onboardingDone: onboardingDone || linkToken != null,
+        invitePromptDone: invitePromptDone,
+        linkToken: linkToken,
+        inviteCode: inviteCode,
+      ),
     ),
   );
 }

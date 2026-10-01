@@ -6,9 +6,9 @@ import 'package:provider/provider.dart';
 import '../../core/app_data.dart';
 import '../../core/session.dart';
 import '../../ui/widgets.dart';
-import '../auth/login_screen.dart';
 import '../settings/settings_screen.dart';
 import '../social/friends.dart';
+import '../social/invite.dart';
 
 List<(FoodItem, int)> foodCounts(Iterable<VisitDto> visits) {
   final counts = <String, int>{};
@@ -58,14 +58,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (session.expired)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: MaterialBanner(
-                content: const Text('Deine Sitzung ist abgelaufen. Ungesendete Einträge bleiben gespeichert.'),
-                actions: [TextButton(onPressed: () => showLogin(context), child: const Text('Anmelden'))],
-              ),
-            ),
           GlassCard(
             child: Row(
               children: [
@@ -82,25 +74,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                if (user == null) FilledButton(onPressed: () => showLogin(context), child: const Text('Anmelden')),
               ],
             ),
           ),
-          if (user != null) ...[
-            const SizedBox(height: 12),
-            GlassCard(
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FriendsScreen())),
-              child: Row(children: [
-                const Icon(Icons.group, color: doenerOrange),
-                const SizedBox(width: 12),
-                const Expanded(child: Text('Freunde')),
-                if (friends.incoming.isNotEmpty) Badge(label: Text('${friends.incoming.length}')),
-                const SizedBox(width: 8),
-                Text('${friends.accepted.length}'),
-                const Icon(Icons.chevron_right),
-              ]),
-            ),
-          ],
+          const SizedBox(height: 12),
+          GlassCard(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FriendsScreen())),
+            child: Row(children: [
+              const Icon(Icons.group, color: doenerOrange),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Freunde')),
+              if (friends.incoming.isNotEmpty) Badge(label: Text('${friends.incoming.length}')),
+              const SizedBox(width: 8),
+              Text('${friends.accepted.length}'),
+              const Icon(Icons.chevron_right),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          GlassCard(
+            onTap: () => showAppSheet(context, (_) => const InviteSheet()),
+            child: const Row(children: [
+              Icon(Icons.qr_code_2, color: doenerOrange),
+              SizedBox(width: 12),
+              Expanded(child: Text('Freunde einladen')),
+              Icon(Icons.chevron_right),
+            ]),
+          ),
           const SizedBox(height: 12),
           Row(children: [
             _StatCard(value: stats.totalVisits, label: 'Besuche', icon: Icons.check_circle, color: Colors.green),

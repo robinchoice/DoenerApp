@@ -13,7 +13,7 @@ Die Döner-App verbindet eine persönliche Stempelkarte mit einem sozialen Layer
 - Server: Dart (shelf), PostgreSQL – liefert auch die Web-App aus
 - Geteilt: `packages/doener_models` – DTOs, Validierung und Gamification-Regeln für App und Server
 - Läden: Google Places API (New), serverseitig abgefragt und gecacht
-- Login: E-Mail-Code bzw. Magic-Link, kein Passwort
+- Login: E-Mail-Code bzw. Magic-Link, kein Passwort; Pflicht, samt eigenem Anzeigenamen statt „Döner-Fan-1234“
 
 ---
 
@@ -83,6 +83,8 @@ Jahresrückblick auf 5 Seiten mit wechselnden Farbverläufen: Besuche im Jahr, L
 
 ### Freunde & Feed
 
+- Persönlicher Einladungslink samt QR-Code (Profil, Freunde-Liste, letzter Onboarding-Schritt): Wer ihn öffnet und sich anmeldet, ist sofort befreundet, eine offene Anfrage gilt damit als angenommen. Der Link lässt sich zurücksetzen.
+- Ohne App führt der Link auf eine Einladungsseite (`/i/<code>`) mit Chat-Vorschau, von dort in die Web-App. Neue Accounts merken sich, über wessen Link sie kamen.
 - Freunde per Namenssuche finden (ab 2 Zeichen); wer eine offene Anfrage zurückschickt, nimmt sie damit an
 - Freunde-Feed mit Check-ins und Bewertungen, dazu Live-Status der Freunde
 - „Meine“-Feed zeigt die eigene Aktivität, noch nicht übertragene Einträge sind markiert
@@ -144,8 +146,14 @@ packages/doener_models/       Geteilte DTOs, Validierung, Stempel/Erfolge/Essens
 | POST | `/friends/requests` | Anfrage senden |
 | POST | `/friends/:id/accept` | Anfrage annehmen |
 | DELETE | `/friends/:id` | Freundschaft entfernen |
+| GET | `/me/invite` | Eigener Einladungslink |
+| POST | `/me/invite/reset` | Neuer Einladungslink, der alte verfällt |
+| GET | `/invites/:code` | Wer einlädt (ohne Login) |
+| POST | `/invites/:code/accept` | Einladung annehmen → sofort befreundet |
 | POST | `/feedback` | Feedback mit optionalem Screenshot |
 | POST | `/shop-reports` | Fehlenden Laden melden |
+
+Außerhalb von `/api/v1` liefert der Server unter `/i/:code` die Einladungsseite aus.
 
 ---
 
@@ -201,12 +209,13 @@ cd app && flutter test
 | `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` | `localhost`, `5432`, `doener`, `doener`, `doener` | Postgres |
 | `DB_TLS` | – | `require` für TLS zur Datenbank |
 | `PORT` | `8080` | HTTP-Port |
-| `PUBLIC_URL` | – | Basis für Magic-Links (`/login?token=…`); ohne steht nur der Code in der Mail |
+| `PUBLIC_URL` | – | Basis für Magic-Links (`/login?token=…`) und Einladungslinks (`/i/…`); ohne steht nur der Code in der Mail |
 | `GOOGLE_PLACES_API_KEY` | – | Ohne Key nur bereits bekannte Läden |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SSL` | –, `587` | Mailversand; ohne Host stehen Codes im Log |
 | `MAIL_FROM` | `Döner App <noreply@localhost>` | Absender |
 | `WEB_DIR` | `web` | Web-Build, der unter `/` ausgeliefert wird |
 | `CORS_ORIGIN` | – | Nur für lokale Web-Entwicklung |
+| `APP_DOWNLOAD_URL` | – | Ziel von „App holen“ auf der Einladungsseite (z. B. öffentlicher TestFlight-Link); ohne nur Web-App |
 
 **App (`--dart-define`):**
 

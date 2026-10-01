@@ -14,19 +14,22 @@ class LoginRequest {
 }
 
 /// Either [email] + [code] (typed in by the user) or [token] (from the
-/// magic link) must be set.
+/// magic link) must be set. [inviteCode] remembers whose invite link brought
+/// a new account in.
 class VerifyRequest {
   final String? email;
   final String? code;
   final String? token;
-  const VerifyRequest({this.email, this.code, this.token});
+  final String? inviteCode;
+  const VerifyRequest({this.email, this.code, this.token, this.inviteCode});
 
   factory VerifyRequest.fromJson(Json j) => VerifyRequest(
         email: j['email'] as String?,
         code: j['code'] as String?,
         token: j['token'] as String?,
+        inviteCode: j['inviteCode'] as String?,
       );
-  Json toJson() => {'email': email, 'code': code, 'token': token};
+  Json toJson() => {'email': email, 'code': code, 'token': token, 'inviteCode': inviteCode};
 }
 
 class AuthResponse {
@@ -479,6 +482,16 @@ class FriendRequestBody {
 
   factory FriendRequestBody.fromJson(Json j) => FriendRequestBody(userId: j['userId'] as String);
   Json toJson() => {'userId': userId};
+}
+
+/// Personal invite link — whoever opens it and signs in becomes a friend.
+class InviteDto {
+  final String code;
+  final String url;
+  const InviteDto({required this.code, required this.url});
+
+  factory InviteDto.fromJson(Json j) => InviteDto(code: j['code'] as String, url: j['url'] as String);
+  Json toJson() => {'code': code, 'url': url};
 }
 
 // MARK: - Feedback & shop reports

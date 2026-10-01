@@ -135,6 +135,12 @@ final migrations = <List<String>>[
         ORDER BY r.updated_at DESC LIMIT 1
       ) n ON true''',
   ],
+  [
+    // Personal invite link: whoever opens it and signs in becomes a friend.
+    'ALTER TABLE users ADD COLUMN invite_code text UNIQUE',
+    // Whose link brought a new account in — to measure how invites spread.
+    'ALTER TABLE users ADD COLUMN invited_by uuid REFERENCES users (id) ON DELETE SET NULL',
+  ],
 ];
 
 Future<void> migrate(Pool<void> db) async {

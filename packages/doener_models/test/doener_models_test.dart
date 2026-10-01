@@ -73,6 +73,9 @@ void main() {
     test('display name and ratings', () {
       expect(Validation.displayNameError(' R '), isNotNull);
       expect(Validation.displayNameError('Robin'), isNull);
+      expect(Validation.isGeneratedName(' Döner-Fan-4821 '), isTrue);
+      expect(Validation.isGeneratedName('Döner-Fan-Robin'), isFalse);
+      expect(Validation.displayNameError('Döner-Fan-4821'), isNotNull, reason: 'the placeholder is not a chosen name');
       expect(Validation.isValidRating(null), isTrue);
       expect(Validation.isValidRating(0), isFalse);
       expect(Validation.isValidRating(5), isTrue);

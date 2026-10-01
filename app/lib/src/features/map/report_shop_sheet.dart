@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/session.dart';
 import '../../ui/widgets.dart';
-import '../auth/login_screen.dart';
 
 /// "Laden fehlt?" — reports go to the server (they used to stay on the device).
 class ReportShopSheet extends StatefulWidget {
@@ -32,7 +31,6 @@ class _ReportShopSheetState extends State<ReportShopSheet> {
   }
 
   Future<void> _send() async {
-    if (!await ensureLoggedIn(context) || !mounted) return;
     setState(() => _busy = true);
     final position = _attachLocation ? widget.position : null;
     try {

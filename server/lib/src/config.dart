@@ -27,6 +27,10 @@ class Config {
   /// Allowed CORS origin for local web development (e.g. `http://localhost:5000`).
   final String? corsOrigin;
 
+  /// Where the invite page's "App holen" button leads (e.g. a public TestFlight link).
+  /// Without it, the page only offers the web app.
+  final String? appDownloadUrl;
+
   const Config({
     required this.database,
     this.databaseTls = false,
@@ -37,6 +41,7 @@ class Config {
     this.mailFrom = 'Döner App <noreply@localhost>',
     this.webDir = 'web',
     this.corsOrigin,
+    this.appDownloadUrl,
   });
 
   factory Config.fromEnvironment(Map<String, String> env) {
@@ -70,6 +75,7 @@ class Config {
       mailFrom: get('MAIL_FROM') ?? 'Döner App <noreply@localhost>',
       webDir: get('WEB_DIR') ?? 'web',
       corsOrigin: get('CORS_ORIGIN'),
+      appDownloadUrl: get('APP_DOWNLOAD_URL'),
     );
   }
 }

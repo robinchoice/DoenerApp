@@ -18,7 +18,9 @@ Handler buildHandler(Deps deps) {
   mountPlaces(api, deps);
   mountSocial(api, deps);
 
-  final root = Router()..mount('/api/v1/', api.call);
+  final root = Router()
+    ..mount('/api/v1/', api.call)
+    ..get('/i/<code>', (Request request, String code) => invitePage(deps, request, code));
 
   final webDir = Directory(deps.config.webDir);
   if (webDir.existsSync()) {
