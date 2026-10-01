@@ -6,8 +6,8 @@ import '../../core/api.dart';
 import '../../core/app_data.dart';
 import '../../core/session.dart';
 import '../../ui/widgets.dart';
-import '../auth/login_screen.dart';
 import '../place/place_detail.dart';
+import '../social/invite.dart';
 
 class FeedScreen extends StatefulWidget {
   const FeedScreen({super.key});
@@ -100,14 +100,6 @@ class _FriendsFeedState extends State<_FriendsFeed> {
   @override
   Widget build(BuildContext context) {
     final session = context.watch<Session>();
-    if (!session.isLoggedIn) {
-      return EmptyState(
-        icon: Icons.group,
-        title: 'Freunde-Feed',
-        message: 'Melde dich an, um zu sehen, wo deine Freunde Döner essen.',
-        action: FilledButton(onPressed: () => showLogin(context), child: const Text('Anmelden')),
-      );
-    }
     if (_loadedFor != session.user!.id) {
       _loadedFor = session.user!.id;
       WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
@@ -126,9 +118,17 @@ class _FriendsFeedState extends State<_FriendsFeed> {
     return RefreshIndicator(
       onRefresh: _refresh,
       child: _items.isEmpty && _live.isEmpty
-          ? ListView(children: const [
-              SizedBox(height: 80),
-              EmptyState(icon: Icons.group, title: 'Keine Aktivität', message: 'Füge Freunde hinzu, um ihre Döner-Aktivitäten zu sehen.'),
+          ? ListView(children: [
+              const SizedBox(height: 80),
+              EmptyState(
+                icon: Icons.group,
+                title: 'Keine Aktivität',
+                message: 'Lade Freunde ein, um zu sehen, wo sie Döner essen.',
+                action: FilledButton(
+                  onPressed: () => showAppSheet(context, (_) => const InviteSheet()),
+                  child: const Text('Freunde einladen'),
+                ),
+              ),
             ])
           : NotificationListener<ScrollNotification>(
               onNotification: (n) {

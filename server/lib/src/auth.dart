@@ -94,7 +94,7 @@ void mountAuth(Router router, Deps deps) {
 
     var user = await queryOne(deps.db, 'SELECT id, display_name FROM users WHERE email = @email', {'email': email});
     final isNewUser = user == null;
-    user ??= await _createUser(deps, email);
+    user ??= await _createUser(deps, email, Validation.clean(body.inviteCode));
 
     final token = randomToken();
     await deps.db.execute(
@@ -190,14 +190,16 @@ Future<String> _consumeLoginRequest(Deps deps, VerifyRequest body) async {
 }
 
 /// New accounts get a random unique name; the app asks to change it afterwards.
-Future<Map<String, dynamic>> _createUser(Deps deps, String email) async {
+/// An unknown [inviteCode] is ignored — the account is created either way.
+Future<Map<String, dynamic>> _createUser(Deps deps, String email, String? inviteCode) async {
   for (var attempt = 0; attempt < 10; attempt++) {
-    final name = 'Döner-Fan-${1000 + _random.nextInt(9000)}';
+    final name = '${Validation.generatedNamePrefix}${1000 + _random.nextInt(9000)}';
     try {
       return (await queryOne(
         deps.db,
-        'INSERT INTO users (email, display_name) VALUES (@email, @name) RETURNING id, display_name',
-        {'email': email, 'name': name},
+        'INSERT INTO users (email, display_name, invited_by) '
+        'VALUES (@email, @name, (SELECT id FROM users WHERE invite_code = @invite:text)) RETURNING id, display_name',
+        {'email': email, 'name': name, 'invite': inviteCode},
       ))!;
     } on UniqueViolationException catch (e) {
       if (e.constraintName != 'users_display_name') rethrow;

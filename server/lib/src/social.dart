@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:doener_models/doener_models.dart';
 import 'package:postgres/postgres.dart';
@@ -181,6 +182,47 @@ void mountSocial(Router router, Deps deps) {
     return noContent();
   });
 
+  router.get('/me/invite', (Request request) async {
+    final me = await requireUser(deps, request);
+    // Created on first use; COALESCE keeps two first calls from handing out different links.
+    final row = await queryOne(
+      deps.db,
+      'UPDATE users SET invite_code = COALESCE(invite_code, @code) WHERE id = @id:uuid RETURNING invite_code',
+      {'code': randomInviteCode(), 'id': me.id},
+    );
+    return json(_invite(deps, request, row!['invite_code'] as String).toJson());
+  });
+
+  router.post('/me/invite/reset', (Request request) async {
+    final me = await requireUser(deps, request);
+    return json(_invite(deps, request, await _newInviteCode(deps, me.id)).toJson());
+  });
+
+  router.get('/invites/<code>', (Request request, String code) async {
+    final inviter = await _inviter(deps, code);
+    if (inviter == null) throw const ApiException.notFound('Einladung ungültig');
+    return json(inviter.toJson());
+  });
+
+  router.post('/invites/<code>/accept', (Request request, String code) async {
+    final me = await requireUser(deps, request);
+    final inviter = await _inviter(deps, code);
+    if (inviter == null) throw const ApiException.notFound('Einladung ungültig');
+    if (inviter.id == me.id) throw const ApiException.badRequest('Das ist dein eigener Link');
+
+    // Sharing the link and opening it count as both sides agreeing — an open
+    // request between the two is settled as well.
+    final row = await queryOne(
+      deps.db,
+      'INSERT INTO friendships (requester_id, addressee_id, status) VALUES (@inviter:uuid, @me:uuid, \'accepted\') '
+      'ON CONFLICT (LEAST(requester_id, addressee_id), GREATEST(requester_id, addressee_id)) '
+      'DO UPDATE SET status = \'accepted\' RETURNING id',
+      {'inviter': inviter.id, 'me': me.id},
+    );
+    final full = await queryOne(deps.db, '$_friendshipSelect WHERE f.id = @id:uuid', {'id': row!['id']});
+    return json(_friendshipFromRow(full!, me.id).toJson());
+  });
+
   router.post('/feedback', (Request request) async {
     final me = await requireUser(deps, request);
     final body = await readBody(request, FeedbackRequest.fromJson);
@@ -246,6 +288,80 @@ FriendshipDto _friendshipFromRow(Map<String, dynamic> row, String me) {
     status: FriendshipStatus.values.byName(row['status'] as String),
     direction: outgoing ? FriendshipDirection.outgoing : FriendshipDirection.incoming,
     createdAt: row['created_at'] as DateTime,
+  );
+}
+
+const _inviteAlphabet = 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+final _random = Random.secure();
+
+/// Short enough for a tidy link and QR code, still about 58 bits — nobody
+/// befriends you by guessing.
+String randomInviteCode() =>
+    List.generate(10, (_) => _inviteAlphabet[_random.nextInt(_inviteAlphabet.length)]).join();
+
+Future<String> _newInviteCode(Deps deps, String userId) async {
+  final code = randomInviteCode();
+  await deps.db.execute(
+    Sql.named('UPDATE users SET invite_code = @code WHERE id = @id:uuid'),
+    parameters: {'code': code, 'id': userId},
+  );
+  return code;
+}
+
+String _publicBase(Deps deps, Request request) => deps.config.publicUrl ?? request.requestedUri.origin;
+
+InviteDto _invite(Deps deps, Request request, String code) =>
+    InviteDto(code: code, url: '${_publicBase(deps, request)}/i/$code');
+
+Future<UserDto?> _inviter(Deps deps, String code) async {
+  final row = await queryOne(deps.db, 'SELECT id, display_name FROM users WHERE invite_code = @code', {'code': code});
+  return row == null ? null : UserDto(id: row['id'] as String, displayName: row['display_name'] as String);
+}
+
+/// `/i/<code>` — what a shared invite link shows without the app: a page with
+/// a chat preview (Open Graph) that leads into the web app.
+Future<Response> invitePage(Deps deps, Request request, String code) async {
+  // All attributes below are double-quoted; slashes stay readable for link previews.
+  const escape = HtmlEscape(HtmlEscapeMode.attribute);
+  final inviter = await _inviter(deps, code);
+  final base = escape.convert(_publicBase(deps, request));
+  final appUrl = deps.config.appDownloadUrl;
+
+  // Only known codes are echoed into the page, and those consist of [_inviteAlphabet] only.
+  final title = inviter == null
+      ? 'Einladung nicht gefunden'
+      : '${escape.convert(inviter.displayName)} lädt dich in die Döner App ein';
+  final content = inviter == null
+      ? '<p>Der Link wurde zurückgesetzt oder ist falsch.</p><a class="button" href="/">Zur Döner App</a>'
+      : '<p>Sieh, wo deine Freunde gerade Döner essen – und iss mit.</p>'
+          '<a class="button" href="/?invite=$code">Im Browser loslegen</a>'
+          '${appUrl == null ? '' : '<a class="button secondary" href="${escape.convert(appUrl)}">App holen</a>'}';
+
+  return Response(
+    inviter == null ? 404 : 200,
+    headers: {'content-type': 'text/html; charset=utf-8'},
+    body: '''<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$title</title>
+<meta property="og:title" content="$title">
+<meta property="og:description" content="Sieh, wo deine Freunde gerade Döner essen – und iss mit.">
+<meta property="og:image" content="$base/icons/Icon-512.png">
+${inviter == null ? '' : '<meta property="og:url" content="$base/i/$code">'}
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; background: #fff8f0; color: #222; }
+  main { max-width: 420px; margin: 0 auto; padding: 48px 24px; text-align: center; }
+  img { border-radius: 50%; }
+  h1 { font-size: 1.5rem; }
+  .button { display: block; margin: 12px 0; padding: 14px; border-radius: 12px; background: #ff8c00; color: #fff; text-decoration: none; font-weight: 600; }
+  .button.secondary { background: none; color: #ff8c00; border: 2px solid #ff8c00; }
+</style>
+</head>
+<body><main><img src="/icons/Icon-192.png" alt="" width="96" height="96"><h1>$title</h1>$content</main></body>
+</html>
+''',
   );
 }
 

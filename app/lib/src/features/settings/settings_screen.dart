@@ -12,7 +12,7 @@ import '../../core/api.dart';
 import '../../core/app_data.dart';
 import '../../core/session.dart';
 import '../../ui/widgets.dart';
-import '../auth/login_screen.dart';
+import '../social/friends.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -97,6 +97,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await data.clearDeviceData();
     await session.setApiBase(null);
     await settingsStore.record('onboardingDone').delete(db);
+    await settingsStore.record('invitePromptDone').delete(db);
+    await pendingInviteRecord.delete(db);
     if (mounted) showMessage(context, 'Zurückgesetzt. Beim nächsten Start läuft das Onboarding.');
   }
 
@@ -135,13 +137,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: Text('Account löschen', style: TextStyle(color: theme.colorScheme.error)),
               onTap: _deleteAccount,
             ),
-          ] else
-            ListTile(
-              leading: const Icon(Icons.login),
-              title: const Text('Anmelden'),
-              subtitle: const Text('Nicht angemeldet'),
-              onTap: () => showLogin(context),
-            ),
+          ],
           header('Synchronisation'),
           ListTile(
             leading: data.syncing
@@ -150,7 +146,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: Text(data.pendingCount == 0 ? 'Alles übertragen' : '${data.pendingCount} Einträge warten'),
             subtitle: data.lastSyncError == null ? null : Text(data.lastSyncError!),
             trailing: TextButton(
-              onPressed: data.syncing || !session.isLoggedIn
+              onPressed: data.syncing
                   ? null
                   : () async {
                       await data.sync();
@@ -164,9 +160,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             leading: const Icon(Icons.feedback_outlined),
             title: const Text('Feedback geben'),
             subtitle: const Text('Fehler gefunden oder Idee für die App? Wir sind in der Testphase.'),
-            onTap: () async {
-              if (await ensureLoggedIn(context) && context.mounted) showAppSheet(context, (_) => const FeedbackSheet());
-            },
+            onTap: () => showAppSheet(context, (_) => const FeedbackSheet()),
           ),
           header('Backend-URL'),
           Padding(
