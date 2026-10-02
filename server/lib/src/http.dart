@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:postgres/postgres.dart';
 import 'package:shelf/shelf.dart';
+import 'package:sentry/sentry.dart';
 
 class ApiException implements Exception {
   final int status;
@@ -88,6 +90,7 @@ Middleware errorHandling() => (inner) => (request) async {
         return json({'error': 'Existiert bereits'}, status: 409);
       } catch (e, st) {
         print('Unhandled error on ${request.method} ${request.requestedUri.path}: $e\n$st');
+        unawaited(Sentry.captureException(e, stackTrace: st));
         return json({'error': 'Interner Fehler'}, status: 500);
       }
     };

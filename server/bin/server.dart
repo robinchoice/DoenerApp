@@ -4,8 +4,21 @@ import 'dart:io';
 import 'package:doener_server/doener_server.dart';
 import 'package:http/http.dart' as http;
 import 'package:shelf/shelf_io.dart' as io;
+import 'package:sentry/sentry.dart';
 
 Future<void> main() async {
+  await Sentry.init(
+    (options) => options
+      ..dsn = Platform.environment['SENTRY_DSN'] ?? ''
+      ..environment = Platform.environment['SENTRY_ENVIRONMENT'] ?? 'development'
+      ..sendDefaultPii = false
+      ..maxBreadcrumbs = 0
+      ..tracesSampleRate = 0,
+    appRunner: startServer,
+  );
+}
+
+Future<void> startServer() async {
   final config = Config.fromEnvironment(Platform.environment);
   final db = openPool(config);
   await migrate(db);
@@ -23,7 +36,14 @@ Future<void> main() async {
 
   final deps = Deps(db: db, config: config, mailer: mailer, httpClient: http.Client());
 
-  Future<void> maintain() => maintainPlaceCache(deps).catchError((Object e) => print('Place cache maintenance failed: $e'));
+  Future<void> maintain() async {
+    try {
+      await maintainPlaceCache(deps);
+    } catch (error, stackTrace) {
+      print('Place cache maintenance failed: $error');
+      await Sentry.captureException(error, stackTrace: stackTrace);
+    }
+  }
   unawaited(maintain());
   Timer.periodic(const Duration(hours: 24), (_) => maintain());
   final server = await io.serve(buildHandler(deps), InternetAddress.anyIPv4, config.port);
@@ -32,6 +52,7 @@ Future<void> main() async {
   ProcessSignal.sigterm.watch().listen((_) async {
     await server.close();
     await db.close();
+    await Sentry.close();
     exit(0);
   });
 }

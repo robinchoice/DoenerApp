@@ -40,6 +40,7 @@ jobs:
           provenance: false
           build-args: |
             GOOGLE_MAPS_WEB_KEY=${{ secrets.GOOGLE_MAPS_WEB_KEY }}
+            SENTRY_DSN=${{ vars.SENTRY_DSN }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}

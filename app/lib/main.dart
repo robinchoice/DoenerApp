@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,19 @@ import 'src/core/session.dart';
 import 'src/features/social/friends.dart';
 
 Future<void> main() async {
+  await SentryFlutter.init(
+    (options) => options
+      ..dsn = const String.fromEnvironment('SENTRY_DSN')
+      ..environment = const String.fromEnvironment('SENTRY_ENVIRONMENT', defaultValue: 'production')
+      ..sendDefaultPii = false
+      ..maxBreadcrumbs = 0
+      ..tracesSampleRate = 0
+      ..enableAutoSessionTracking = false,
+    appRunner: startApp,
+  );
+}
+
+Future<void> startApp() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
   await initializeDateFormatting('de');

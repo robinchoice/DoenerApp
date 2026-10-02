@@ -16,7 +16,8 @@ COPY app ./app
 # Self-host CanvasKit and fonts instead of loading them from Google's CDN.
 # Referrer-restricted browser key; it ends up in the public JS anyway.
 ARG GOOGLE_MAPS_WEB_KEY=""
-RUN cd app && flutter build web --release --no-web-resources-cdn --dart-define=GOOGLE_MAPS_WEB_KEY=$GOOGLE_MAPS_WEB_KEY
+ARG SENTRY_DSN=""
+RUN cd app && flutter build web --release --no-web-resources-cdn --dart-define=GOOGLE_MAPS_WEB_KEY=$GOOGLE_MAPS_WEB_KEY --dart-define=SENTRY_DSN=$SENTRY_DSN
 
 FROM dart:3.13 AS server
 WORKDIR /src
