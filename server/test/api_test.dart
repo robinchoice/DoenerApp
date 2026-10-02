@@ -325,8 +325,9 @@ void main() {
 
       final (_, top) = await call('GET', '/places/top?lat=48&lon=7.85');
       expect((top as List).single['placeId'], 'place-kebap');
-      final (_, trending) = await call('GET', '/places/trending');
+      final (_, trending) = await call('GET', '/places/trending?lat=48&lon=7.85');
       expect((trending as List).single['placeId'], 'place-kebap');
+      expect((await call('GET', '/places/trending')).$1, 400, reason: 'trends are local');
     });
 
     test('feed pages through many entries without gaps', () async {
@@ -375,6 +376,127 @@ void main() {
       expect(place['reviewCount'], 0);
       final (_, friends) = await call('GET', '/friends', token: bob);
       expect(friends, isEmpty);
+    });
+  });
+
+  group('community around a city', () {
+    // A city of its own, far away from the places of the other tests.
+    late String ute;
+    late String vic;
+    late String wim;
+    late UserDto vicUser;
+
+    Future<void> place(String id, String name, double lat, String city) => db.execute(
+          Sql.named('INSERT INTO places (google_place_id, name, latitude, longitude, city) '
+              'VALUES (@id, @name, @lat, 8.0, @city)'),
+          parameters: {'id': id, 'name': name, 'lat': lat, 'city': city},
+        );
+
+    Future<void> review(String token, String placeId, int rating, [int? sauce]) async {
+      final (status, _) = await call('PUT', '/places/$placeId/review', body: {'rating': rating, 'sauceRating': ?sauce}, token: token);
+      expect(status, 200);
+    }
+
+    List<String> ids(dynamic places) => [for (final p in places as List) p['placeId'] as String];
+
+    setUpAll(() async {
+      late UserDto uteUser;
+      (ute, uteUser) = await signUp('ute@example.org', 'Ute');
+      (vic, vicUser) = await signUp('vic@example.org', 'Vic');
+      (wim, _) = await signUp('wim@example.org', 'Wim');
+      // Ute and Vic are friends, Wim is a stranger to both.
+      await call('POST', '/friends/requests', body: {'userId': vicUser.id}, token: ute);
+      await call('POST', '/friends/requests', body: {'userId': uteUser.id}, token: vic);
+
+      await place('t-steady', 'Steady Kebap', 50.0, 'Testheim');
+      await place('t-solo', 'Solo Döner', 50.01, 'Testheim');
+      await place('t-meh', 'Meh Imbiss', 50.02, 'Testheim');
+      await place('t-new', 'Neuer Laden', 50.001, 'Testheim');
+      await place('t-far', 'Fern Grill', 50.5, 'Fernstadt'); // 55 km away
+
+      await review(ute, 't-steady', 5, 3);
+      await review(vic, 't-steady', 4, 3);
+      await review(wim, 't-steady', 5);
+      await review(wim, 't-solo', 5, 5);
+      await review(ute, 't-meh', 2);
+      await review(wim, 't-meh', 2);
+      await review(wim, 't-far', 5);
+    });
+
+    test('ranking is per city and weighted', () async {
+      final (status, body) = await call('GET', '/ranking?lat=50&lon=8', token: ute);
+      expect(status, 200);
+      final ranking = RankingDto.fromJson(body as Map<String, dynamic>);
+      expect(ranking.city, 'Testheim');
+      // A single 5 doesn't beat 5, 5 and 4; unrated and other cities' places are left out.
+      expect(ranking.entries.map((e) => e.place.placeId), ['t-steady', 't-solo', 't-meh']);
+      expect(ranking.entries.first.average, closeTo(14 / 3, 1e-9));
+      expect(ranking.entries.first.count, 3);
+      expect(ranking.entries.first.friends.map((f) => (f.user.displayName, f.rating)), [('Vic', 4)]);
+      expect(ranking.entries[1].friends, isEmpty, reason: 'Wim is no friend');
+
+      final (_, sauce) = await call('GET', '/ranking?lat=50&lon=8&by=sauce', token: ute);
+      final bySauce = RankingDto.fromJson(sauce as Map<String, dynamic>);
+      expect(bySauce.entries.map((e) => e.place.placeId), ['t-solo', 't-steady']);
+      expect(bySauce.entries[1].friends.single.rating, 3);
+
+      final (_, nowhere) = await call('GET', '/ranking?lat=10&lon=10', token: ute);
+      expect(nowhere['city'], isNull);
+      expect(nowhere['entries'], isEmpty);
+      expect((await call('GET', '/ranking?lat=50&lon=8&by=zwiebel', token: ute)).$1, 400);
+      expect((await call('GET', '/ranking?lat=50&lon=8')).$1, 401);
+    });
+
+    test('top places are weighted and filled up with unrated ones nearby', () async {
+      final (_, top) = await call('GET', '/places/top?lat=50&lon=8&limit=3');
+      expect(ids(top), ['t-steady', 't-solo', 't-meh']);
+      final (_, more) = await call('GET', '/places/top?lat=50&lon=8&limit=5');
+      expect(ids(more), ['t-steady', 't-solo', 't-meh', 't-new'], reason: 'Fern Grill is beyond 10 km');
+      expect(more.last['reviewCount'], 0);
+    });
+
+    test('trends are local', () async {
+      final (_, trending) = await call('GET', '/places/trending?lat=50&lon=8');
+      expect(ids(trending), ['t-steady', 't-meh', 't-solo']);
+    });
+
+    test('feed: friends everywhere, everyone else\'s reviews around', () async {
+      await call('POST', '/places/t-far/visits',
+          body: {'id': '44444444-4444-4444-8444-444444444444', 'visitedAt': DateTime.now().toUtc().toIso8601String()},
+          token: vic);
+
+      final (_, around) = await call('GET', '/feed?lat=50&lon=8', token: ute);
+      final items = FeedPage.fromJson(around as Map<String, dynamic>).items;
+      expect(
+        items.map((i) => (i.type, i.user.displayName, i.place.placeId, i.fromFriend)).toSet(),
+        {
+          (FeedItemType.visit, 'Vic', 't-far', true),
+          (FeedItemType.review, 'Vic', 't-steady', true),
+          (FeedItemType.review, 'Wim', 't-steady', false),
+          (FeedItemType.review, 'Wim', 't-solo', false),
+          (FeedItemType.review, 'Wim', 't-meh', false),
+        },
+        reason: 'own reviews and strangers far away are left out',
+      );
+
+      final (_, friendsOnly) = await call('GET', '/feed', token: ute);
+      expect((friendsOnly['items'] as List).map((i) => i['user']['displayName']).toSet(), {'Vic'});
+    });
+
+    test('"eating now" lasts an hour', () async {
+      final ninetyMinutesAgo = DateTime.now().toUtc().subtract(const Duration(minutes: 90));
+      await call('DELETE', '/me/live-status', token: vic);
+      await call('POST', '/places/t-steady/visits',
+          body: {'id': '55555555-5555-4555-8555-555555555555', 'visitedAt': ninetyMinutesAgo.toIso8601String()},
+          token: vic);
+      expect((await call('GET', '/feed/live', token: ute)).$2, isEmpty);
+
+      await call('POST', '/places/t-steady/visits',
+          body: {'id': '55555555-5555-4555-8555-555555555556', 'visitedAt': DateTime.now().toUtc().toIso8601String()},
+          token: vic);
+      final (_, live) = await call('GET', '/feed/live', token: ute);
+      final until = DateTime.parse((live as List).single['until'] as String);
+      expect(until.difference(DateTime.now()).inMinutes, inInclusiveRange(58, 60));
     });
   });
 

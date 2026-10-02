@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:doener_models/doener_models.dart';
 import 'package:flutter/foundation.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:sembast/sembast.dart';
 import 'package:uuid/uuid.dart';
 
@@ -87,24 +90,51 @@ class AppData extends ChangeNotifier {
     await _cachePlaces(json as List);
   }
 
-  Future<List<PlaceDto>> topNearby(double lat, double lon) async =>
-      _cachePlaces(await _api.get('/places/top', query: {'lat': '$lat', 'lon': '$lon', 'radius': '5000'}) as List);
+  /// Shops around a position — enough to tell whether the user is at one.
+  Future<void> loadAround(double lat, double lon) =>
+      loadArea(south: lat - 0.0025, west: lon - 0.0025, north: lat + 0.0025, east: lon + 0.0025);
 
-  Future<List<PlaceDto>> trending() async => _cachePlaces(await _api.get('/places/trending') as List);
+  /// Known places within [meters], nearest first.
+  List<PlaceDto> placesWithin(double lat, double lon, double meters) {
+    final distances = {
+      for (final p in places.values) p.placeId: Geolocator.distanceBetween(lat, lon, p.latitude, p.longitude),
+    };
+    return places.values.where((p) => distances[p.placeId]! <= meters).toList()
+      ..sort((a, b) => distances[a.placeId]!.compareTo(distances[b.placeId]!));
+  }
+
+  Future<List<PlaceDto>> topNearby(double lat, double lon) async =>
+      _cachePlaces(await _api.get('/places/top', query: {'lat': '$lat', 'lon': '$lon', 'limit': '3'}) as List);
+
+  Future<List<PlaceDto>> trending(double lat, double lon) async =>
+      _cachePlaces(await _api.get('/places/trending', query: {'lat': '$lat', 'lon': '$lon'}) as List);
+
+  Future<RankingDto> ranking(double lat, double lon, RatingDimension by) async {
+    final json = await _api.get('/ranking', query: {'lat': '$lat', 'lon': '$lon', 'by': by.name});
+    final ranking = RankingDto.fromJson(json as Map<String, dynamic>);
+    await _storePlaces([for (final e in ranking.entries) e.place]);
+    return ranking;
+  }
 
   /// Fresh community rating after the user reviewed a place.
   Future<void> refreshPlace(String placeId) async =>
       _cachePlaces([await _api.get('/places/${Uri.encodeComponent(placeId)}')]);
 
-  Future<List<PlaceDto>> _cachePlaces(List json) async {
-    final list = [for (final p in json) PlaceDto.fromJson(p as Map<String, dynamic>)];
-    await _db.transaction((tx) async {
+  Future<List<PlaceDto>> _cachePlaces(List json) =>
+      _storePlaces([for (final p in json) PlaceDto.fromJson(p as Map<String, dynamic>)]);
+
+  /// Shown right away, the copy on disk follows: on the web, IndexedDB is slow
+  /// enough to hold up the start screen.
+  Future<List<PlaceDto>> _storePlaces(List<PlaceDto> list) async {
+    for (final p in list) {
+      places[p.placeId] = p;
+    }
+    notifyListeners();
+    unawaited(_db.transaction((tx) async {
       for (final p in list) {
-        places[p.placeId] = p;
         await _places.record(p.placeId).put(tx, {'dto': p.toJson(), 'cachedAt': DateTime.now().millisecondsSinceEpoch});
       }
-    });
-    notifyListeners();
+    }));
     return list;
   }
 
@@ -134,14 +164,9 @@ class AppData extends ChangeNotifier {
 
   List<LocalVisit> visitsAt(String placeId) => visits.where((v) => v.dto.placeId == placeId).toList();
 
-  Future<void> checkIn(PlaceDto place, {String? foodType, String? comment}) async {
+  Future<void> checkIn(PlaceDto place, {String? foodType}) async {
     final user = session.user!;
-    final request = CreateVisitRequest(
-      id: const Uuid().v4(),
-      visitedAt: DateTime.now().toUtc(),
-      comment: Validation.clean(comment),
-      foodType: foodType,
-    );
+    final request = CreateVisitRequest(id: const Uuid().v4(), visitedAt: DateTime.now().toUtc(), foodType: foodType);
     final visit = VisitDto(
       id: request.id,
       userId: user.id,
@@ -149,7 +174,6 @@ class AppData extends ChangeNotifier {
       placeId: place.placeId,
       placeName: place.name,
       visitedAt: request.visitedAt,
-      comment: request.comment,
       foodType: foodType,
     );
     await _putVisit(LocalVisit(visit, pending: true));

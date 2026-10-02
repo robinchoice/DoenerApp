@@ -7,32 +7,26 @@ import 'package:provider/provider.dart';
 import '../../core/app_data.dart';
 import '../../ui/widgets.dart';
 
+/// Check-ins only count on site.
+const checkInRadius = 150.0;
+
 class CheckInSheet extends StatefulWidget {
-  final PlaceDto place;
-  const CheckInSheet({super.key, required this.place});
+  /// Shops within [checkInRadius], nearest first.
+  final List<PlaceDto> places;
+  const CheckInSheet({super.key, required this.places});
 
   @override
   State<CheckInSheet> createState() => _CheckInSheetState();
 }
 
 class _CheckInSheetState extends State<CheckInSheet> {
-  final _comment = TextEditingController();
+  late PlaceDto _place = widget.places.first;
   int _selected = 0;
   bool _done = false;
 
-  @override
-  void dispose() {
-    _comment.dispose();
-    super.dispose();
-  }
-
   Future<void> _checkIn() async {
     setState(() => _done = true);
-    await context.read<AppData>().checkIn(
-          widget.place,
-          foodType: FoodItem.all[_selected].id,
-          comment: _comment.text,
-        );
+    await context.read<AppData>().checkIn(_place, foodType: FoodItem.all[_selected].id);
     await Future<void>.delayed(const Duration(milliseconds: 1800));
     if (mounted) Navigator.of(context).pop();
   }
@@ -46,7 +40,23 @@ class _CheckInSheetState extends State<CheckInSheet> {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           children: [
             Text('Einchecken', style: Theme.of(context).textTheme.titleLarge, textAlign: TextAlign.center),
-            Text(widget.place.name, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.outline)),
+            if (widget.places.length == 1)
+              Text(_place.name, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.outline))
+            else
+              // Several shops next to each other: nearest first, the user picks.
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final p in widget.places)
+                    ChoiceChip(
+                      label: Text(p.name),
+                      selected: p == _place,
+                      onSelected: _done ? null : (_) => setState(() => _place = p),
+                    ),
+                ],
+              ),
             const SizedBox(height: 8),
             RotaryPicker(selected: _selected, onChanged: (i) => setState(() => _selected = i)),
             Center(
@@ -58,12 +68,6 @@ class _CheckInSheetState extends State<CheckInSheet> {
                   child: const Icon(Icons.check, size: 34, color: Colors.white),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _comment,
-              maxLength: Validation.commentMax,
-              decoration: const InputDecoration(hintText: 'Kommentar (optional)'),
             ),
           ],
         ),

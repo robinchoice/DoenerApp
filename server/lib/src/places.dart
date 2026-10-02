@@ -10,8 +10,11 @@ import 'deps.dart';
 import 'google_places.dart';
 import 'http.dart';
 
-const liveStatusDuration = Duration(hours: 2);
+const liveStatusDuration = Duration(hours: 1);
 const _maxSyncSpanDeg = 0.5;
+
+/// "Im Umkreis": community reviews, top places and trends count within this distance.
+const communityRadius = 10000.0;
 
 PlaceDto placeFromRow(Map<String, dynamic> row) => PlaceDto(
       placeId: row['google_place_id'] as String,
@@ -50,7 +53,6 @@ VisitDto visitFromRow(Map<String, dynamic> row) => VisitDto(
       placeId: row['google_place_id'] as String,
       placeName: row['place_name'] as String,
       visitedAt: row['visited_at'] as DateTime,
-      comment: row['comment'] as String?,
       foodType: row['food_type'] as String?,
     );
 
@@ -92,42 +94,49 @@ void mountPlaces(Router router, Deps deps) {
     return json(rows.map((r) => placeFromRow(r).toJson()).toList());
   });
 
+  // GET /places/top?lat&lon — best around by weighted rating. Where too few
+  // places are rated, the nearest unrated ones fill up the list.
   router.get('/places/top', (Request request) async {
     final lat = queryDouble(request, 'lat');
     final lon = queryDouble(request, 'lon');
-    final radius = queryDouble(request, 'radius', fallback: 5000).clamp(100, 20000);
+    final radius = queryDouble(request, 'radius', fallback: communityRadius).clamp(100, 20000).toDouble();
     final limit = queryInt(request, 'limit', fallback: 10, min: 1, max: 50);
-    final (latDelta, lonDelta) = _degreeDeltas(lat, radius.toDouble());
+    final area = radiusParams(lat, lon, radius);
 
-    final rows = await query(
+    final rated = rankByWeight(await query(
       deps.db,
-      'SELECT * FROM place_view WHERE review_count > 0 '
-      'AND latitude BETWEEN @minLat AND @maxLat AND longitude BETWEEN @minLon AND @maxLon '
-      'ORDER BY avg_rating DESC, review_count DESC LIMIT @limit:int4',
-      {
-        'minLat': lat - latDelta,
-        'maxLat': lat + latDelta,
-        'minLon': lon - lonDelta,
-        'maxLon': lon + lonDelta,
-        'limit': limit,
-      },
-    );
-    return json(rows.map((r) => placeFromRow(r).toJson()).toList());
+      'SELECT p.*, p.avg_rating AS avg, p.review_count AS n FROM place_view p '
+      'WHERE review_count > 0 AND ${withinRadius('p')}',
+      area,
+    )).take(limit).toList();
+    final unrated = rated.length == limit
+        ? const <Map<String, dynamic>>[]
+        : await query(
+            deps.db,
+            'SELECT * FROM place_view p WHERE review_count = 0 AND ${withinRadius('p')} '
+            'ORDER BY ${distanceSql('p')} LIMIT @rest:int4',
+            {...area, 'rest': limit - rated.length},
+          );
+    return json([...rated, ...unrated].map((r) => placeFromRow(r).toJson()).toList());
   });
 
+  // GET /places/trending?lat&lon — most check-ins and reviews around in the
+  // last days. Check-ins count without saying whose.
   router.get('/places/trending', (Request request) async {
+    final area = radiusParams(queryDouble(request, 'lat'), queryDouble(request, 'lon'), communityRadius);
     final days = queryInt(request, 'days', fallback: 7, min: 1, max: 30);
     final limit = queryInt(request, 'limit', fallback: 10, min: 1, max: 50);
     final rows = await query(
       deps.db,
       'SELECT pv.* FROM ('
-      '  SELECT place_id, count(*) AS activity FROM ('
+      '  SELECT x.place_id, count(*) AS activity FROM ('
       '    SELECT place_id FROM reviews WHERE updated_at > now() - make_interval(days => @days:int4)'
       '    UNION ALL'
       '    SELECT place_id FROM visits WHERE visited_at > now() - make_interval(days => @days:int4)'
-      '  ) x GROUP BY place_id ORDER BY activity DESC LIMIT @limit:int4'
+      '  ) x JOIN places p ON p.id = x.place_id WHERE ${withinRadius('p')}'
+      '  GROUP BY x.place_id ORDER BY activity DESC LIMIT @limit:int4'
       ') a JOIN place_view pv ON pv.id = a.place_id ORDER BY a.activity DESC, pv.name',
-      {'days': days, 'limit': limit},
+      {...area, 'days': days, 'limit': limit},
     );
     return json(rows.map((r) => placeFromRow(r).toJson()).toList());
   });
@@ -207,17 +216,15 @@ void mountPlaces(Router router, Deps deps) {
     if (body.foodType != null && FoodItem.byId(body.foodType) == null) {
       throw const ApiException.badRequest('Unbekannter Essenstyp');
     }
-    final comment = Validation.clean(body.comment);
-    if ((comment?.length ?? 0) > Validation.commentMax) throw const ApiException.badRequest('Kommentar zu lang');
     final place = await _requirePlace(deps, placeId);
 
     // Client-generated IDs make offline retries idempotent.
     final inserted = await queryOne(
       deps.db,
-      'INSERT INTO visits (id, user_id, place_id, visited_at, comment, food_type) '
-      'VALUES (@id:uuid, @user:uuid, @place:uuid, @at:timestamptz, @comment, @food) '
+      'INSERT INTO visits (id, user_id, place_id, visited_at, food_type) '
+      'VALUES (@id:uuid, @user:uuid, @place:uuid, @at:timestamptz, @food) '
       'ON CONFLICT (id) DO NOTHING RETURNING id',
-      {'id': id, 'user': user.id, 'place': place['id'], 'at': body.visitedAt, 'comment': comment, 'food': body.foodType},
+      {'id': id, 'user': user.id, 'place': place['id'], 'at': body.visitedAt, 'food': body.foodType},
     );
     if (inserted == null) {
       final existing = await queryOne(deps.db, '$_visitSelect WHERE v.id = @id:uuid', {'id': id});
@@ -363,6 +370,51 @@ Future<void> maintainPlaceCache(Deps deps) async {
   const metersPerDegree = 111000.0;
   final cosLat = math.cos(lat * math.pi / 180).abs().clamp(0.01, 1.0);
   return (radiusMeters / metersPerDegree, radiusMeters / (metersPerDegree * cosLat));
+}
+
+/// Parameters for [withinRadius] and [distanceSql].
+Map<String, Object> radiusParams(double lat, double lon, double radiusMeters) {
+  final (latDelta, lonDelta) = _degreeDeltas(lat, radiusMeters);
+  return {
+    'lat': lat,
+    'lon': lon,
+    'radius': radiusMeters,
+    'minLat': lat - latDelta,
+    'maxLat': lat + latDelta,
+    'minLon': lon - lonDelta,
+    'maxLon': lon + lonDelta,
+  };
+}
+
+/// SQL condition: place [alias] lies within @radius meters of @lat/@lon. The
+/// bounding box comes first so Postgres can use the coordinate index.
+String withinRadius(String alias) =>
+    '$alias.latitude BETWEEN @minLat AND @maxLat AND $alias.longitude BETWEEN @minLon AND @maxLon '
+    'AND ${distanceSql(alias)} <= @radius';
+
+/// Meters from @lat/@lon — a flat-earth approximation, exact enough within a city.
+String distanceSql(String alias) =>
+    '111195 * sqrt(power($alias.latitude - @lat, 2) + power(($alias.longitude - @lon) * cos(radians(@lat)), 2))';
+
+/// Best first by [weightedRating]; rows need `avg` and `n` (review count).
+/// The mean is that of all reviews in [rows] — the area or city being ranked.
+List<Map<String, dynamic>> rankByWeight(List<Map<String, dynamic>> rows) {
+  var total = 0.0;
+  var count = 0;
+  for (final r in rows) {
+    total += (r['avg'] as double) * (r['n'] as int);
+    count += r['n'] as int;
+  }
+  final score = {for (final r in rows) r['id']: weightedRating(r['avg'] as double, r['n'] as int, total / count)};
+
+  int compare(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final byScore = score[b['id']]!.compareTo(score[a['id']]!);
+    if (byScore != 0) return byScore;
+    final byCount = (b['n'] as int).compareTo(a['n'] as int);
+    return byCount != 0 ? byCount : (a['name'] as String).compareTo(b['name'] as String);
+  }
+
+  return [...rows]..sort(compare);
 }
 
 /// Human-readable community summary (German), built from the place's reviews.

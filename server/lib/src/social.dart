@@ -11,7 +11,7 @@ import 'deps.dart';
 import 'http.dart';
 import 'places.dart';
 
-const _friendIdsCte = 'WITH friends AS ('
+const friendIdsCte = 'WITH friends AS ('
     ' SELECT CASE WHEN requester_id = @me:uuid THEN addressee_id ELSE requester_id END AS id'
     ' FROM friendships WHERE status = \'accepted\' AND (requester_id = @me:uuid OR addressee_id = @me:uuid))';
 
@@ -31,24 +31,38 @@ String encodeCursor(DateTime timestamp, String id) =>
 }
 
 void mountSocial(Router router, Deps deps) {
+  // GET /feed?cursor[&lat&lon] — friends' check-ins and reviews; with lat/lon
+  // also everyone else's reviews around that point. Own activity is not part of it.
   router.get('/feed', (Request request) async {
     final me = await requireUser(deps, request);
     final limit = queryInt(request, 'limit', fallback: 20, min: 1, max: 50);
     final cursor = decodeCursor(request.url.queryParameters['cursor']);
+    final around = request.url.queryParameters.containsKey('lat')
+        ? radiusParams(queryDouble(request, 'lat'), queryDouble(request, 'lon'), communityRadius)
+        : null;
 
     // One query over both activity types, ordered and limited together — so
     // "hasMore" is exact and nothing gets skipped between pages.
     final rows = await query(
       deps.db,
-      '$_friendIdsCte SELECT * FROM ('
-      '  SELECT \'visit\' AS type, v.id, v.user_id, v.place_id, v.visited_at AS ts, v.comment AS text,'
-      '         NULL::int AS rating, v.food_type FROM visits v WHERE v.user_id IN (SELECT id FROM friends)'
+      '$friendIdsCte SELECT * FROM ('
+      '  SELECT \'visit\' AS type, v.id, v.user_id, v.place_id, v.visited_at AS ts, NULL::text AS text,'
+      '         NULL::int AS rating, v.food_type, true AS from_friend'
+      '  FROM visits v WHERE v.user_id IN (SELECT id FROM friends)'
       '  UNION ALL'
-      '  SELECT \'review\', r.id, r.user_id, r.place_id, r.updated_at, r.text, r.rating, NULL'
-      '  FROM reviews r WHERE r.user_id IN (SELECT id FROM friends)'
+      '  SELECT \'review\', r.id, r.user_id, r.place_id, r.updated_at, r.text, r.rating, NULL,'
+      '         r.user_id IN (SELECT id FROM friends)'
+      '  FROM reviews r JOIN places p ON p.id = r.place_id WHERE r.user_id IN (SELECT id FROM friends)'
+      '${around == null ? '' : ' OR (r.user_id <> @me:uuid AND ${withinRadius('p')})'}'
       ') f ${cursor == null ? '' : 'WHERE (f.ts, f.id) < (@ts:timestamptz, @id:uuid)'}'
       ' ORDER BY f.ts DESC, f.id DESC LIMIT @limit:int4',
-      {'me': me.id, 'limit': limit + 1, if (cursor != null) 'ts': cursor.$1, if (cursor != null) 'id': cursor.$2},
+      {
+        'me': me.id,
+        'limit': limit + 1,
+        ...?around,
+        if (cursor != null) 'ts': cursor.$1,
+        if (cursor != null) 'id': cursor.$2,
+      },
     );
 
     final hasMore = rows.length > limit;
@@ -64,6 +78,7 @@ void mountSocial(Router router, Deps deps) {
           user: users[r['user_id']]!,
           place: places[r['place_id']]!,
           timestamp: r['ts'] as DateTime,
+          fromFriend: r['from_friend'] as bool,
           rating: r['rating'] as int?,
           text: r['text'] as String?,
           foodType: r['food_type'] as String?,
@@ -81,7 +96,7 @@ void mountSocial(Router router, Deps deps) {
     final me = await requireUser(deps, request);
     final rows = await query(
       deps.db,
-      '$_friendIdsCte SELECT u.id, u.display_name, u.live_until, u.live_food_type, p.google_place_id, p.name '
+      '$friendIdsCte SELECT u.id, u.display_name, u.live_until, u.live_food_type, p.google_place_id, p.name '
       'FROM users u JOIN places p ON p.id = u.live_place_id '
       'WHERE u.id IN (SELECT id FROM friends) AND u.live_until > now() ORDER BY u.live_until DESC',
       {'me': me.id},

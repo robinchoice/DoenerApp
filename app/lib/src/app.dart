@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:sembast/sembast.dart';
 
@@ -11,14 +13,14 @@ import 'core/app_data.dart';
 import 'core/location.dart';
 import 'core/session.dart';
 import 'features/auth/login_screen.dart';
-import 'features/discover/discover_screen.dart';
-import 'features/feed/feed_screen.dart';
 import 'features/map/map_screen.dart';
 import 'features/onboarding/welcome_screen.dart';
+import 'features/place/check_in_sheet.dart';
 import 'features/profile/profile_screen.dart';
 import 'features/ranking/ranking_screen.dart';
 import 'features/social/friends.dart';
 import 'features/social/invite.dart';
+import 'features/start/start_screen.dart';
 import 'ui/widgets.dart';
 
 class DoenerApp extends StatelessWidget {
@@ -76,9 +78,12 @@ class _RootState extends State<_Root> {
   void initState() {
     super.initState();
     final data = context.read<AppData>();
+    final location = context.read<LocationService>();
     _lifecycle = AppLifecycleListener(onResume: () {
       data.sync();
       data.refreshMine();
+      // Back at the shop? The check-in button needs a fresh position.
+      if (_onboardingDone) location.request(ask: false);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       // Keep login token and invite code out of the browser's address bar.
@@ -154,36 +159,103 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 }
 
+/// Start · Ranking · 🥙 · Karte · Profil. The middle button is no tab: it
+/// checks in at the shop the user is standing at and is grey anywhere else.
 class _HomeShellState extends State<HomeShell> {
-  int _tab = 2;
+  static const _checkInTab = 2;
+  static const _mapTab = 3;
+  int _tab = 0;
+  late final LocationService _location = context.read<LocationService>();
+  LatLng? _loadedAround;
+
+  @override
+  void initState() {
+    super.initState();
+    _location.addListener(_loadAround);
+    _loadAround();
+  }
+
+  @override
+  void dispose() {
+    _location.removeListener(_loadAround);
+    super.dispose();
+  }
+
+  List<PlaceDto> _nearby(AppData data) {
+    final position = _location.position;
+    return position == null ? const [] : data.placesWithin(position.latitude, position.longitude, checkInRadius);
+  }
+
+  /// Keeps the shops next to the user loaded — they decide whether the
+  /// check-in button is active.
+  Future<void> _loadAround({bool force = false}) async {
+    final position = _location.position;
+    final last = _loadedAround;
+    if (position == null || !mounted) return;
+    if (!force &&
+        last != null &&
+        Geolocator.distanceBetween(last.latitude, last.longitude, position.latitude, position.longitude) < 100) {
+      return;
+    }
+    _loadedAround = position;
+    try {
+      await context.read<AppData>().loadAround(position.latitude, position.longitude);
+    } on OfflineException {
+      _loadedAround = null; // shops cached earlier still count
+    } on ApiException {
+      _loadedAround = null;
+    }
+  }
+
+  Future<void> _checkIn() async {
+    final data = context.read<AppData>();
+    if (_nearby(data).isEmpty) {
+      // Before saying no: ask for the location if it was never granted, and
+      // reload the shops around in case that failed earlier.
+      await _location.request();
+      await _loadAround(force: true);
+    }
+    if (!mounted) return;
+    final nearby = _nearby(data);
+    if (nearby.isEmpty) {
+      return showMessage(
+        context,
+        _location.position == null
+            ? 'Zum Einchecken braucht die App deinen Standort.'
+            : 'Einchecken geht nur vor Ort – in ${checkInRadius.round()} m ist kein Döner-Laden.',
+      );
+    }
+    await showAppSheet(context, (_) => CheckInSheet(places: nearby));
+  }
 
   @override
   Widget build(BuildContext context) {
     final pending = context.select<AppData, int>((d) => d.pendingCount);
+    context.watch<LocationService>();
+    final onSite = context.select<AppData, bool>((d) => _nearby(d).isNotEmpty);
     return Scaffold(
       body: IndexedStack(
-        index: _tab,
+        index: _tab < _checkInTab ? _tab : _tab - 1,
         children: [
-          const FeedScreen(),
+          StartScreen(onOpenMap: () => setState(() => _tab = _mapTab)),
           const RankingScreen(),
-          DiscoverScreen(onOpenMap: () => setState(() => _tab = 3)),
           const MapScreen(),
           const ProfileScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
+        onDestinationSelected: (i) => i == _checkInTab ? _checkIn() : setState(() => _tab = i),
         destinations: [
-          const NavigationDestination(icon: Icon(Icons.group_outlined), selectedIcon: Icon(Icons.group), label: 'Feed'),
+          const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Start'),
           const NavigationDestination(icon: Icon(Icons.emoji_events_outlined), selectedIcon: Icon(Icons.emoji_events), label: 'Ranking'),
           NavigationDestination(
             icon: CircleAvatar(
               radius: 22,
-              backgroundColor: doenerOrange,
-              child: Icon(_tab == 2 ? Icons.travel_explore : Icons.search, color: Colors.white),
+              backgroundColor: onSite ? doenerOrange : Theme.of(context).colorScheme.surfaceContainerHighest,
+              child: Opacity(opacity: onSite ? 1 : 0.4, child: const Text('🥙', style: TextStyle(fontSize: 22))),
             ),
-            label: 'Entdecken',
+            label: 'Einchecken',
           ),
           const NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Karte'),
           NavigationDestination(

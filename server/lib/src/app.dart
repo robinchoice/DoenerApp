@@ -8,6 +8,7 @@ import 'auth.dart';
 import 'deps.dart';
 import 'http.dart';
 import 'places.dart';
+import 'ranking.dart';
 import 'social.dart';
 
 /// API under `/api/v1`, the Flutter web build (if present) everywhere else.
@@ -16,6 +17,7 @@ Handler buildHandler(Deps deps) {
     ..get('/health', (Request _) => json({'status': 'ok'}));
   mountAuth(api, deps);
   mountPlaces(api, deps);
+  mountRanking(api, deps);
   mountSocial(api, deps);
 
   final root = Router()
