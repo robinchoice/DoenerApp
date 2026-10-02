@@ -10,7 +10,7 @@ Die App wird gerade auf diese Ausrichtung umgebaut. Was beschlossen, aber noch n
 
 ## Überblick
 
-Die Döner-App verbindet eine persönliche Stempelkarte mit einem sozialen Layer: Nutzer checken bei Läden ein, bewerten nach Soße/Fleisch/Brot, verfolgen ihre eigene Döner-Geschichte und sehen, was Freunde gerade essen.
+Die Döner-App zeigt die besten Döner-Läden der Umgebung und das Ranking der Stadt, gebildet aus den Bewertungen nach Soße/Fleisch/Brot. Ein Check-in vor Ort zeigt den Freunden, wo man gerade isst. Dazu kommen eine persönliche Stempelkarte und die eigene Döner-Geschichte.
 
 **Stack:**
 - App: Flutter (iOS, Android, Web), Google Maps (google_maps_flutter), sembast als lokaler Store
@@ -30,16 +30,18 @@ Die Karte lädt Dönerläden für den sichtbaren Ausschnitt (nur bis 0,5° Span)
 Google erlaubt, Laden-Details höchstens 30 Tage zu speichern (nur die Place ID unbegrenzt) und Places-Daten nur auf Google-Karten zu zeigen. Deshalb: Karte von Google Maps, ein täglicher Job auf dem Server frischt Läden mit Besuchen oder Bewertungen auf und löscht ungenutzte nach 30 Tagen, die App verwirft ihren lokalen Cache ebenso. Listen ohne Karte tragen den Hinweis „Ortsdaten: Google Maps“.
 
 - Pins: orange, besuchte Läden grün, Favoriten pink; fremde Geschäfts-POIs sind ausgeblendet
-- Favoriten-Filter per Herz oben rechts
+- Lupe oben rechts: Suche in allen Läden, die die App schon kennt; daneben der Favoriten-Filter per Herz
 - „Laden fehlt?“ oben links schickt eine Meldung samt Kartenposition an den Server
 
 ### Check-In
 
-Ein Drehrad mit 6 Essenstypen (Döner, Yufka, Lahmacun, Teller, Pommes, Falafel) – das oberste Symbol ist ausgewählt. Danach regnet es Emojis des gewählten Essens.
+Eingecheckt wird nur vor Ort, über den 🥙-Knopf in der Mitte der Tab-Leiste. Er ist orange, sobald ein Laden höchstens 150 m entfernt ist, sonst grau. Dafür lädt die App die Läden rund um den Standort und verfolgt ihn, solange sie offen ist. Ein Tipp auf den grauen Knopf fragt nach dem Standort, falls er noch nicht freigegeben ist, und lädt die Läden in der Nähe neu. Den Abstand prüft nur die App: Koordinaten ließen sich ohnehin fälschen, deshalb verzichtet der Server darauf, solange keine Fakes auftauchen.
+
+Danach kommt ein Drehrad mit 6 Essenstypen (Döner, Yufka, Lahmacun, Teller, Pommes, Falafel), das oberste Symbol ist ausgewählt. Stehen mehrere Läden nebeneinander, wählt man vorher den richtigen aus. Nach dem Check-in regnet es Emojis des gewählten Essens. Einen Kommentar gibt es nicht.
 
 - Check-ins werden sofort lokal gespeichert und über eine Sync-Queue an den Server geschickt
 - Die ID erzeugt der Client, deshalb entstehen bei Wiederholungen keine doppelten Besuche
-- Ein Check-in setzt für 2 Stunden den Live-Status („isst gerade bei …“), aber nur wenn er wirklich gerade passiert
+- Ein Check-in setzt für eine Stunde den Live-Status („isst gerade bei …“), aber nur wenn er wirklich gerade passiert
 
 ### Bewertungen
 
@@ -52,7 +54,7 @@ Ein Gesamtrating (1–5) plus drei optionale Dimensionen: Soße, Fleisch, Brot. 
 
 ### Profil & Stempelkarte
 
-Das Profil ist der persönliche Döner-Pass: Besuche, Bewertungen, Läden, Döner-Konsum nach Essenstyp und „Seit [Monat Jahr]“ ab dem ersten Check-in.
+Das Profil ist der persönliche Döner-Pass: Besuche, Bewertungen, Läden, Döner-Konsum nach Essenstyp und „Seit [Monat Jahr]“ ab dem ersten Check-in. Dort liegen auch „Meine Aktivität“ (eigene Check-ins und Bewertungen, noch nicht übertragene sind markiert) und „Meine Läden“ (alle besuchten oder bewerteten Läden, sortierbar nach Bewertung, Besuchen oder zuletzt besucht).
 
 | Stufe | Ab Besuchen | Farbe |
 |---|---|---|
@@ -85,18 +87,28 @@ Die Regeln liegen in `packages/doener_models` und sind dort getestet.
 
 Jahresrückblick auf 5 Seiten mit wechselnden Farbverläufen: Besuche im Jahr, Lieblingsessen, Stammladen, entdeckte Läden, Zusammenfassung mit aktivstem Monat.
 
-### Freunde & Feed
+### Start
+
+Der erste Tab, für den Umkreis von 10 km um den Standort (ohne Standort: Freiburg):
+
+- Ganz oben die Freunde, die gerade essen
+- Startaufgaben, bis sie erledigt sind: „Bewerte deinen Stammladen“ (führt zur Karte) und „Hol deine Freunde per QR-Code“
+- „Top 3 hier“: nach gewichtetem Schnitt wie im Ranking. Gibt es zu wenige bewertete Läden, füllen die nächstgelegenen als „noch unbewertet“ auf
+- „Gerade im Trend“: meiste Check-ins und Bewertungen der letzten 7 Tage, Check-ins zählen anonym
+- Feed: Check-ins und Bewertungen der Freunde (orange hinterlegt) und die Bewertungen aller anderen im Umkreis, mit Namen. Check-ins sehen nur Freunde. Der Filter „Nur Freunde“ blendet die anderen aus, die eigene Aktivität steht im Profil
+
+### Ranking
+
+Ranking der Stadt laut Adresse; die Stadt ist die des nächsten bekannten Ladens im Umkreis von 20 km. Gerankt wird der Laden, umschaltbar nach Gesamt, Soße, Fleisch und Brot.
+
+- Sortiert wird nach gewichtetem Schnitt: Jeder Laden startet mit drei Bewertungen in Höhe des Stadtschnitts (`weightedRating` in `packages/doener_models`). So schlägt eine einzelne 5 nicht viele 4,5er
+- Angezeigt werden echter Schnitt und Anzahl, dazu die Freunde, die den Laden bewertet haben, mit ihrer Note
+
+### Freunde
 
 - Persönlicher Einladungslink samt QR-Code (Profil, Freunde-Liste, letzter Onboarding-Schritt): Wer ihn öffnet und sich anmeldet, ist sofort befreundet, eine offene Anfrage gilt damit als angenommen. Der Link lässt sich zurücksetzen.
 - Ohne App führt der Link auf eine Einladungsseite (`/i/<code>`) mit Chat-Vorschau, von dort in die Web-App. Neue Accounts merken sich, über wessen Link sie kamen.
 - Freunde per Namenssuche finden (ab 2 Zeichen); wer eine offene Anfrage zurückschickt, nimmt sie damit an
-- Freunde-Feed mit Check-ins und Bewertungen, dazu Live-Status der Freunde
-- „Meine“-Feed zeigt die eigene Aktivität, noch nicht übertragene Einträge sind markiert
-
-### Ranking & Entdecken
-
-- Ranking: alle Läden, bei denen man war oder die man bewertet hat – sortiert nach Bewertung, Besuchen oder zuletzt besucht
-- Entdecken: bestbewertete Läden in der Nähe, „Gerade im Hype“ (Aktivität der letzten 7 Tage), eigene neue Bewertungen, Suche in allen bekannten Läden
 
 ---
 
@@ -105,16 +117,17 @@ Jahresrückblick auf 5 Seiten mit wechselnden Farbverläufen: Besuche im Jahr, L
 ```
 app/                          Flutter-App (iOS, Android, Web)
 ├── lib/src/core/             ApiClient, Session, AppData (lokaler Store + Sync-Queue), Standort
-├── lib/src/features/         auth, map, place, feed, ranking, discover, profile, social, settings, onboarding
+├── lib/src/features/         auth, start, ranking, map, place, profile, social, settings, onboarding
 └── lib/src/ui/               Theme und gemeinsame Widgets
 server/                       Dart-API + Auslieferung der Web-App
 ├── lib/src/auth.dart         Magic-Link-Login, Sitzungen, Account
-├── lib/src/places.dart       Läden, Bewertungen, Besuche
+├── lib/src/places.dart       Läden, Bewertungen, Besuche, Top und Trend im Umkreis
+├── lib/src/ranking.dart      Ranking pro Stadt
 ├── lib/src/social.dart       Feed, Live-Status, Freunde, Feedback, Ladenmeldungen
 ├── lib/src/google_places.dart
 ├── lib/src/db.dart           SQL-Migrationen (nur anhängen, nie ändern)
 └── tool/seed_dev.dart        Test-Läden in Freiburg für Entwicklung ohne Google-Key
-packages/doener_models/       Geteilte DTOs, Validierung, Stempel/Erfolge/Essenstypen
+packages/doener_models/       Geteilte DTOs, Validierung, Ranking-Regel, Stempel/Erfolge/Essenstypen
 ```
 
 **Prinzipien:**
@@ -134,8 +147,9 @@ packages/doener_models/       Geteilte DTOs, Validierung, Stempel/Erfolge/Essens
 | PATCH | `/users/me` | Anzeigename ändern |
 | DELETE | `/users/me` | Account löschen |
 | GET | `/places?minLat&minLon&maxLat&maxLon` | Läden im Kartenausschnitt |
-| GET | `/places/top?lat&lon` | Bestbewertete in der Nähe |
-| GET | `/places/trending` | Meiste Aktivität der letzten Tage |
+| GET | `/places/top?lat&lon` | Beste im Umkreis von 10 km (gewichtet), mit unbewerteten aufgefüllt |
+| GET | `/places/trending?lat&lon` | Meiste Check-ins und Bewertungen im Umkreis in 7 Tagen |
+| GET | `/ranking?lat&lon&by` | Ranking der Stadt nach `overall`, `sauce`, `fleisch` oder `brot`, mit Freunden |
 | GET | `/places/:placeId` | Laden (Google Place ID) |
 | GET | `/places/:placeId/reviews` | Bewertungen des Ladens |
 | GET | `/places/:placeId/summary` | Community-Zusammenfassung |
@@ -143,7 +157,7 @@ packages/doener_models/       Geteilte DTOs, Validierung, Stempel/Erfolge/Essens
 | POST | `/places/:placeId/visits` | Check-in (idempotent über Client-ID) |
 | GET | `/me/visits`, `/me/reviews`, `/me/places` | Eigene Daten |
 | DELETE | `/me/live-status` | Live-Status beenden |
-| GET | `/feed?cursor` | Freunde-Feed (Keyset-Pagination) |
+| GET | `/feed?cursor[&lat&lon]` | Check-ins und Bewertungen der Freunde, mit `lat`/`lon` auch alle Bewertungen im Umkreis (Keyset-Pagination) |
 | GET | `/feed/live` | Live-Status der Freunde |
 | GET | `/users/search?q` | Nutzer suchen |
 | GET | `/friends` | Freundschaften |
@@ -269,23 +283,18 @@ Beschlossen, aber noch nicht gebaut. Was fertig ist, wandert in die Abschnitte o
 
 - **Kern:** Bewertungen und das Ranking der Stadt, nicht Menge oder Spiel.
 - **Zwei Ebenen:** Bewertungen (ab Phase 2 auch Fragen) sieht jeder im Umkreis von 10 km, mit Namen. Check-ins sehen nur Freunde. Freunde verbinden sich per QR-Code oder Einladungslink.
-- **Tabs:** Start · Ranking · 🥙 · Karte · Profil. Entdecken geht in Start und Karte auf, die persönliche Laden-Liste und „Meine“ ziehen ins Profil.
-- **Start:** Oben „Top 3 hier“ (10 km) und „Gerade im Trend“ (meiste Check-ins und Bewertungen im Umkreis in 7 Tagen, Check-ins anonym gezählt). Darunter ein Feed mit Check-ins der Freunde und Bewertungen. Freunde sind hervorgehoben, wer gerade isst, steht ganz oben. Dazu gibt es den Filter „Nur Freunde“. Wo noch niemand bewertet hat, erscheinen die Läden als „noch unbewertet“, dazu Startaufgaben (Stammladen bewerten, Freunde per QR holen).
-- **Check-in:** nur vor Ort (≤ 150 m) über das Rad im Mittelknopf, sonst ist der Knopf grau. Ohne Kommentar. Freunde bekommen einen Push mit dem Platz im Ranking („Tom isst gerade 🥙 bei X (Nr. 2 in Freiburg)“) und reagieren mit 🤤, 🥙 oder 🙋. „Isst gerade“ gilt eine Stunde. Nach etwa 30 Minuten fragt die App „Wie war's bei X?“, als Benachrichtigung oder als Karte im Start. Wer den Laden schon bewertet hat, bekommt „Bleibt's bei 4,5?“.
+- **Nach dem Check-in:** Freunde bekommen einen Push mit dem Platz im Ranking („Tom isst gerade 🥙 bei X (Nr. 2 in Freiburg)“) und reagieren mit 🤤, 🥙 oder 🙋. Nach etwa 30 Minuten fragt die App „Wie war's bei X?“, als Benachrichtigung oder als Karte im Start. Wer den Laden schon bewertet hat, bekommt „Bleibt's bei 4,5?“.
 - **Bewertung:** Soße, Fleisch, Brot (je 1–5, Unpassendes weglassen), optional Text und ein Foto. Die Gesamtnote ist der Durchschnitt, ohne manuelles Überschreiben. Bewerten darf jeder. Wer eingecheckt hat, bekommt das Häkchen „vor Ort“. Pro Person und Laden zählt die neueste Bewertung. Den Spruch unter dem Laden liefert ab Phase 2 die Bewertung mit den meisten Upvotes.
-- **Ranking-Tab:** pro Stadt laut Adresse, gerankt wird der Laden. Sortiert wird nach gewichtetem Schnitt (wenige Bewertungen werden zum Stadtschnitt gezogen), angezeigt werden echter Schnitt und Anzahl. Umschaltbar nach Soße, Fleisch und Brot. In jeder Zeile stehen die Freunde, die den Laden bewertet haben, mit ihrem Schnitt.
 - **Push:** Check-ins von Freunden (pro Person höchstens alle 3 Stunden), Antworten auf eigene Beiträge und die Bewertungserinnerung. Neue Fragen gehen nur an Kenner (ab 5 bewerteten Läden in der Stadt), höchstens eine am Tag. Upvotes und Ranking-Änderungen zeigt nur die App. Jede Art ist abschaltbar, Freunde einzeln stummschaltbar.
 - **Belohnung:** eine Stufe nach bewerteten Läden (bisherige Stufen-Namen) neben dem Namen, ab Phase 2 mit den Upvotes. Wrapped gibt es nur im Dezember.
-- **Fällt weg:** Erfolge, Stempelkarte, Konsum-Statistik, private Notizen, „Was macht den Laden besonders?“ und der Kommentar beim Check-in.
+- **Fällt weg:** Erfolge, Stempelkarte, Konsum-Statistik, private Notizen und „Was macht den Laden besonders?“.
 - **Profil:** öffentlich mit Name, Stufe und Bewertungen. Freunde sehen zusätzlich die Check-ins.
 - **Texte:** Einladung „Welcher Döner ist der beste in [Stadt]? Die Döner-App weiß es, und du siehst, wo ich gerade esse: [Link]“, App-Store-Untertitel „Der beste Döner deiner Stadt“.
 
 ### Phase 1 – Bester Döner der Stadt
 
-- Tabs, Startscreen und Startaufgaben
-- Ranking-Tab
 - Neue Bewertung mit Foto und Häkchen „vor Ort“
-- Rad vor Ort mit Erinnerung
+- Erinnerung nach dem Check-in („Wie war's bei X?“)
 - Push für Check-ins von Freunden: iOS über APNs, dazu Web Push
 - Öffentliches Profil mit Stufe, Wegfallendes entfernen
 - Universal Links, damit QR-Code, Einladungs- und Magic-Link die App öffnen (bis dahin: Code eintippen)

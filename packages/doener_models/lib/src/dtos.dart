@@ -1,3 +1,5 @@
+import 'ranking.dart';
+
 typedef Json = Map<String, dynamic>;
 
 DateTime _date(Object? v) => DateTime.parse(v as String);
@@ -281,7 +283,6 @@ class VisitDto {
   final String placeId;
   final String placeName;
   final DateTime visitedAt;
-  final String? comment;
   final String? foodType;
 
   const VisitDto({
@@ -291,7 +292,6 @@ class VisitDto {
     required this.placeId,
     required this.placeName,
     required this.visitedAt,
-    this.comment,
     this.foodType,
   });
 
@@ -302,7 +302,6 @@ class VisitDto {
         placeId: j['placeId'] as String,
         placeName: j['placeName'] as String,
         visitedAt: _date(j['visitedAt']),
-        comment: j['comment'] as String?,
         foodType: j['foodType'] as String?,
       );
 
@@ -313,7 +312,6 @@ class VisitDto {
         'placeId': placeId,
         'placeName': placeName,
         'visitedAt': visitedAt.toUtc().toIso8601String(),
-        'comment': comment,
         'foodType': foodType,
       };
 }
@@ -322,22 +320,19 @@ class VisitDto {
 class CreateVisitRequest {
   final String id;
   final DateTime visitedAt;
-  final String? comment;
   final String? foodType;
 
-  const CreateVisitRequest({required this.id, required this.visitedAt, this.comment, this.foodType});
+  const CreateVisitRequest({required this.id, required this.visitedAt, this.foodType});
 
   factory CreateVisitRequest.fromJson(Json j) => CreateVisitRequest(
         id: j['id'] as String,
         visitedAt: _date(j['visitedAt']),
-        comment: j['comment'] as String?,
         foodType: j['foodType'] as String?,
       );
 
   Json toJson() => {
         'id': id,
         'visitedAt': visitedAt.toUtc().toIso8601String(),
-        'comment': comment,
         'foodType': foodType,
       };
 }
@@ -346,12 +341,15 @@ class CreateVisitRequest {
 
 enum FeedItemType { visit, review }
 
+/// Check-ins come from friends only; reviews from friends and from everyone
+/// around — [fromFriend] tells them apart.
 class FeedItem {
   final String id;
   final FeedItemType type;
   final UserDto user;
   final PlaceDto place;
   final DateTime timestamp;
+  final bool fromFriend;
   final int? rating;
   final String? text;
   final String? foodType;
@@ -362,6 +360,7 @@ class FeedItem {
     required this.user,
     required this.place,
     required this.timestamp,
+    required this.fromFriend,
     this.rating,
     this.text,
     this.foodType,
@@ -373,6 +372,7 @@ class FeedItem {
         user: UserDto.fromJson(j['user'] as Json),
         place: PlaceDto.fromJson(j['place'] as Json),
         timestamp: _date(j['timestamp']),
+        fromFriend: j['fromFriend'] as bool,
         rating: j['rating'] as int?,
         text: j['text'] as String?,
         foodType: j['foodType'] as String?,
@@ -384,6 +384,7 @@ class FeedItem {
         'user': user.toJson(),
         'place': place.toJson(),
         'timestamp': timestamp.toUtc().toIso8601String(),
+        'fromFriend': fromFriend,
         'rating': rating,
         'text': text,
         'foodType': foodType,
@@ -436,6 +437,61 @@ class LiveStatusDto {
         'foodType': foodType,
         'until': until.toUtc().toIso8601String(),
       };
+}
+
+// MARK: - Ranking
+
+/// A friend's rating of a ranked place, in the ranked dimension.
+class FriendRatingDto {
+  final UserDto user;
+  final int rating;
+  const FriendRatingDto({required this.user, required this.rating});
+
+  factory FriendRatingDto.fromJson(Json j) =>
+      FriendRatingDto(user: UserDto.fromJson(j['user'] as Json), rating: j['rating'] as int);
+  Json toJson() => {'user': user.toJson(), 'rating': rating};
+}
+
+/// [average] and [count] are the real numbers; the order comes from [weightedRating].
+class RankingEntryDto {
+  final PlaceDto place;
+  final double average;
+  final int count;
+  final List<FriendRatingDto> friends;
+
+  const RankingEntryDto({required this.place, required this.average, required this.count, this.friends = const []});
+
+  factory RankingEntryDto.fromJson(Json j) => RankingEntryDto(
+        place: PlaceDto.fromJson(j['place'] as Json),
+        average: (j['average'] as num).toDouble(),
+        count: j['count'] as int,
+        friends: (j['friends'] as List).map((e) => FriendRatingDto.fromJson(e as Json)).toList(),
+      );
+
+  Json toJson() => {
+        'place': place.toJson(),
+        'average': average,
+        'count': count,
+        'friends': friends.map((e) => e.toJson()).toList(),
+      };
+}
+
+/// Places of one [city] (as in their address), best first. [city] is null
+/// when no place near the requested position is known.
+class RankingDto {
+  final String? city;
+  final RatingDimension by;
+  final List<RankingEntryDto> entries;
+
+  const RankingDto({this.city, required this.by, required this.entries});
+
+  factory RankingDto.fromJson(Json j) => RankingDto(
+        city: j['city'] as String?,
+        by: RatingDimension.values.byName(j['by'] as String),
+        entries: (j['entries'] as List).map((e) => RankingEntryDto.fromJson(e as Json)).toList(),
+      );
+
+  Json toJson() => {'city': city, 'by': by.name, 'entries': entries.map((e) => e.toJson()).toList()};
 }
 
 // MARK: - Friends

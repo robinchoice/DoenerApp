@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:doener_models/doener_models.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -11,6 +12,7 @@ import '../../core/location.dart';
 import '../../core/maps.dart';
 import '../../ui/widgets.dart';
 import '../place/place_detail.dart';
+import 'place_search_sheet.dart';
 import 'report_shop_sheet.dart';
 
 /// Above this span the viewport would be dot-soup; we don't load places.
@@ -31,6 +33,13 @@ class _MapScreenState extends State<MapScreen> {
   String? _error;
   bool _favoritesOnly = false;
   bool _centeredOnUser = false;
+
+  Future<void> _search() async {
+    final place = await showAppSheet<PlaceDto>(context, (_) => const PlaceSearchSheet());
+    if (place == null || !mounted) return;
+    _controller?.animateCamera(CameraUpdate.newLatLngZoom(LatLng(place.latitude, place.longitude), 16));
+    await showPlaceDetail(context, place);
+  }
 
   Future<void> _load({bool force = false}) async {
     final bounds = await _controller?.getVisibleRegion();
@@ -82,6 +91,7 @@ class _MapScreenState extends State<MapScreen> {
           onPressed: () => showAppSheet(context, (_) => ReportShopSheet(position: _center)),
         ),
         actions: [
+          IconButton(tooltip: 'Laden suchen', icon: const Icon(Icons.search), onPressed: _search),
           IconButton(
             tooltip: 'Nur Favoriten',
             icon: Icon(_favoritesOnly ? Icons.favorite : Icons.favorite_border, color: _favoritesOnly ? Colors.pink : null),

@@ -116,6 +116,13 @@ void main() {
     expect(data.lastSyncError, contains('verworfen'));
   });
 
+  test('places within the check-in radius, nearest first', () async {
+    data.places['p1'] = _place;
+    data.places['near'] = const PlaceDto(placeId: 'near', name: 'Nebenan', latitude: 48.0005, longitude: 7.85);
+    data.places['far'] = const PlaceDto(placeId: 'far', name: 'Weit weg', latitude: 48.01, longitude: 7.85);
+    expect(data.placesWithin(48.0001, 7.85, 150).map((p) => p.placeId), ['p1', 'near']);
+  });
+
   test('logging in as someone else clears the previous account data', () async {
     server.mode = 'offline';
     await data.checkIn(_place);

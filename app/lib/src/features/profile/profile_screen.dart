@@ -9,6 +9,7 @@ import '../../ui/widgets.dart';
 import '../settings/settings_screen.dart';
 import '../social/friends.dart';
 import '../social/invite.dart';
+import 'mine.dart';
 
 List<(FoodItem, int)> foodCounts(Iterable<VisitDto> visits) {
   final counts = <String, int>{};
@@ -97,6 +98,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Icon(Icons.qr_code_2, color: doenerOrange),
               SizedBox(width: 12),
               Expanded(child: Text('Freunde einladen')),
+              Icon(Icons.chevron_right),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          GlassCard(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyActivityScreen())),
+            child: Row(children: [
+              const Icon(Icons.history, color: doenerOrange),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Meine Aktivität')),
+              if (data.pendingCount > 0) Badge(label: Text('${data.pendingCount}')),
+              const Icon(Icons.chevron_right),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          GlassCard(
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const MyPlacesScreen())),
+            child: const Row(children: [
+              Icon(Icons.storefront, color: doenerOrange),
+              SizedBox(width: 12),
+              Expanded(child: Text('Meine Läden')),
               Icon(Icons.chevron_right),
             ]),
           ),

@@ -90,11 +90,38 @@ void main() {
       user: const UserDto(id: 'u', displayName: 'Robin'),
       place: const PlaceDto(placeId: 'p', name: 'Laden', latitude: 48, longitude: 7.8, avgRating: 4),
       timestamp: DateTime.utc(2026, 9, 1, 12, 0, 0, 123, 456),
+      fromFriend: true,
       rating: 5,
     );
     final page = FeedPage.fromJson(FeedPage(items: [item], cursor: 'c', hasMore: true).toJson());
     expect(page.items.single.timestamp, item.timestamp);
     expect(page.items.single.place.avgRating, 4.0);
     expect(page.items.single.type, FeedItemType.review);
+    expect(page.items.single.fromFriend, isTrue);
+
+    final ranking = RankingDto.fromJson(RankingDto(
+      city: 'Freiburg im Breisgau',
+      by: RatingDimension.sauce,
+      entries: [
+        RankingEntryDto(
+          place: item.place,
+          average: 4,
+          count: 2,
+          friends: [FriendRatingDto(user: item.user, rating: 5)],
+        ),
+      ],
+    ).toJson());
+    expect(ranking.by, RatingDimension.sauce);
+    expect(ranking.entries.single.average, 4.0);
+    expect(ranking.entries.single.friends.single.user.displayName, 'Robin');
+  });
+
+  test('weighted rating pulls places with few reviews towards the mean', () {
+    const mean = 3.5;
+    final single = weightedRating(5, 1, mean);
+    final many = weightedRating(4.5, 10, mean);
+    expect(single, closeTo((5 + 3 * mean) / 4, 1e-9));
+    expect(many, greaterThan(single), reason: 'ten 4.5s beat a single 5');
+    expect(weightedRating(mean, 7, mean), closeTo(mean, 1e-9));
   });
 }

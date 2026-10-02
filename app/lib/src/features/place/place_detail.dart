@@ -9,7 +9,6 @@ import '../../core/app_data.dart';
 import '../../core/session.dart';
 import '../../ui/widgets.dart';
 import '../../core/maps.dart';
-import 'check_in_sheet.dart';
 import 'review_sheet.dart';
 
 Future<void> showPlaceDetail(BuildContext context, PlaceDto place) => showModalBottomSheet(
@@ -47,8 +46,6 @@ class _PlaceDetailState extends State<PlaceDetail> {
       [for (final r in results[1] as List) ReviewDto.fromJson(r as Map<String, dynamic>)],
     );
   }
-
-  Future<void> _checkIn(PlaceDto place) => showAppSheet(context, (_) => CheckInSheet(place: place));
 
   Future<void> _review(PlaceDto place) async {
     final saved = await showAppSheet<bool>(context, (_) => ReviewSheet(place: place));
@@ -166,7 +163,6 @@ class _PlaceDetailState extends State<PlaceDetail> {
               color: Colors.pink,
               onTap: () => data.toggleFavorite(place.placeId),
             ),
-            _ActionTile(icon: Icons.check_circle, label: 'Einchecken', color: Colors.green, onTap: () => _checkIn(place)),
             _ActionTile(icon: Icons.restaurant, label: 'Bewerten', color: doenerOrange, onTap: () => _review(place)),
             _ActionTile(
               icon: note != null ? Icons.sticky_note_2 : Icons.sticky_note_2_outlined,
@@ -235,15 +231,7 @@ class _PlaceDetailState extends State<PlaceDetail> {
                   children: [
                     Text(foodEmoji(v.dto.foodType), style: const TextStyle(fontSize: 24)),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(formatDateTime(v.dto.visitedAt), style: const TextStyle(fontWeight: FontWeight.w600)),
-                          if (v.dto.comment != null) Text(v.dto.comment!, style: TextStyle(color: theme.colorScheme.outline)),
-                        ],
-                      ),
-                    ),
+                    Expanded(child: Text(formatDateTime(v.dto.visitedAt), style: const TextStyle(fontWeight: FontWeight.w600))),
                     if (FoodItem.byId(v.dto.foodType) case final food?) Chip(label: Text(food.label), visualDensity: VisualDensity.compact),
                     if (v.pending) const Icon(Icons.cloud_upload_outlined, size: 18),
                   ],

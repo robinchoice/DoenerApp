@@ -28,10 +28,12 @@ class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
-  const GlassCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap});
+  final Color? color;
+  const GlassCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.onTap, this.color});
 
   @override
   Widget build(BuildContext context) => Card(
+        color: color,
         clipBehavior: Clip.antiAlias,
         child: InkWell(onTap: onTap, child: Padding(padding: padding, child: child)),
       );
@@ -85,6 +87,102 @@ class DimensionChip extends StatelessWidget {
           DoenerRating(value: value, size: 11),
         ],
       );
+}
+
+/// A check-in or review in a feed. [highlight] marks friends.
+class ActivityCard extends StatelessWidget {
+  final FeedItemType type;
+  final String title;
+  final String subtitle;
+  final DateTime timestamp;
+  final int? rating;
+  final String? text;
+  final String? foodType;
+  final bool pending;
+  final bool highlight;
+  final VoidCallback? onTap;
+
+  const ActivityCard({
+    super.key,
+    required this.type,
+    required this.title,
+    required this.subtitle,
+    required this.timestamp,
+    this.rating,
+    this.text,
+    this.foodType,
+    this.pending = false,
+    this.highlight = false,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isVisit = type == FeedItemType.visit;
+    final color = isVisit ? Colors.green : doenerOrange;
+    return GlassCard(
+      onTap: onTap,
+      color: highlight ? doenerOrange.withValues(alpha: 0.1) : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: color.withValues(alpha: 0.12),
+                child: isVisit && foodType != null
+                    ? Text(foodEmoji(foodType), style: const TextStyle(fontSize: 18))
+                    : Icon(isVisit ? Icons.check_circle : Icons.restaurant, size: 18, color: color),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Flexible(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis)),
+                      if (highlight) ...[
+                        const SizedBox(width: 6),
+                        const Icon(Icons.group, size: 14, color: doenerOrange, semanticLabel: 'Freund'),
+                      ],
+                    ]),
+                    Text(subtitle, style: const TextStyle(color: doenerOrange)),
+                  ],
+                ),
+              ),
+              if (pending) const Padding(padding: EdgeInsets.only(right: 6), child: Icon(Icons.cloud_upload_outlined, size: 16)),
+              Text(relativeTime(timestamp), style: theme.textTheme.labelSmall?.copyWith(color: theme.colorScheme.outline)),
+            ],
+          ),
+          if (rating != null) ...[const SizedBox(height: 8), DoenerRating(value: rating!, size: 14)],
+          if (text != null && text!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(text!, style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Place number in a ranking — cups for the podium.
+class RankBadge extends StatelessWidget {
+  final int rank;
+  const RankBadge({super.key, required this.rank});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (rank) { 1 => doenerOrange, 2 => Colors.grey, 3 => Colors.brown, _ => Colors.transparent };
+    return CircleAvatar(
+      radius: 18,
+      backgroundColor: color.withValues(alpha: 0.15),
+      child: rank <= 3
+          ? Icon(Icons.emoji_events, size: 18, color: color)
+          : Text('$rank', style: const TextStyle(fontWeight: FontWeight.bold)),
+    );
+  }
 }
 
 class EmptyState extends StatelessWidget {
