@@ -17,6 +17,3 @@ app/ios/Flutter/Secrets.xcconfig
 
 # Library package — consumers resolve their own versions
 packages/doener_models/pubspec.lock
-
-# Local process logs
-.enjoy-logs/
