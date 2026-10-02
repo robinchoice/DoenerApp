@@ -1,6 +1,10 @@
 # Döner-App 🥙
 
-Eine App zum Finden, Bewerten und Sammeln von Dönerläden – für iOS, Android und Web aus einer Codebase. Offline-First, Community-getrieben, mit Gamification-Mechaniken, die an Pokémon Go und Spotify Wrapped erinnern.
+**Der beste Döner der Stadt – empfohlen von Leuten in deiner Umgebung.**
+
+Eine lokale Döner-Community für iOS, Android und Web aus einer Codebase. Wer in der Nähe Döner isst, bewertet die Läden nach Soße, Fleisch und Brot. Daraus entstehen das Ranking der Stadt und die Trends im Umkreis. Freunde verbinden sich per QR-Code und sehen, wo der andere gerade isst.
+
+Die App wird gerade auf diese Ausrichtung umgebaut. Was beschlossen, aber noch nicht gebaut ist, steht unter [Umbau](#umbau). Alle anderen Abschnitte beschreiben den Stand im Code.
 
 ---
 
@@ -257,7 +261,53 @@ Die Build-Nummer steigt pro Lauf automatisch (TestFlight lehnt doppelte ab).
 
 ---
 
-## Offene Punkte
+## Umbau
 
-- Universal Links / App Links, damit der Magic-Link direkt die App öffnet (bis dahin: Code eintippen)
+Beschlossen, aber noch nicht gebaut. Was fertig ist, wandert in die Abschnitte oben und fliegt hier raus.
+
+### Leitlinie
+
+- **Kern:** Bewertungen und das Ranking der Stadt, nicht Menge oder Spiel.
+- **Zwei Ebenen:** Bewertungen (ab Phase 2 auch Fragen) sieht jeder im Umkreis von 10 km, mit Namen. Check-ins sehen nur Freunde. Freunde verbinden sich per QR-Code oder Einladungslink.
+- **Tabs:** Start · Ranking · 🥙 · Karte · Profil. Entdecken geht in Start und Karte auf, die persönliche Laden-Liste und „Meine“ ziehen ins Profil.
+- **Start:** Oben „Top 3 hier“ (10 km) und „Gerade im Trend“ (meiste Check-ins und Bewertungen im Umkreis in 7 Tagen, Check-ins anonym gezählt). Darunter ein Feed mit Check-ins der Freunde und Bewertungen. Freunde sind hervorgehoben, wer gerade isst, steht ganz oben. Dazu gibt es den Filter „Nur Freunde“. Wo noch niemand bewertet hat, erscheinen die Läden als „noch unbewertet“, dazu Startaufgaben (Stammladen bewerten, Freunde per QR holen).
+- **Check-in:** nur vor Ort (≤ 150 m) über das Rad im Mittelknopf, sonst ist der Knopf grau. Ohne Kommentar. Freunde bekommen einen Push mit dem Platz im Ranking („Tom isst gerade 🥙 bei X (Nr. 2 in Freiburg)“) und reagieren mit 🤤, 🥙 oder 🙋. „Isst gerade“ gilt eine Stunde. Nach etwa 30 Minuten fragt die App „Wie war's bei X?“, als Benachrichtigung oder als Karte im Start. Wer den Laden schon bewertet hat, bekommt „Bleibt's bei 4,5?“.
+- **Bewertung:** Soße, Fleisch, Brot (je 1–5, Unpassendes weglassen), optional Text und ein Foto. Die Gesamtnote ist der Durchschnitt, ohne manuelles Überschreiben. Bewerten darf jeder. Wer eingecheckt hat, bekommt das Häkchen „vor Ort“. Pro Person und Laden zählt die neueste Bewertung. Den Spruch unter dem Laden liefert ab Phase 2 die Bewertung mit den meisten Upvotes.
+- **Ranking-Tab:** pro Stadt laut Adresse, gerankt wird der Laden. Sortiert wird nach gewichtetem Schnitt (wenige Bewertungen werden zum Stadtschnitt gezogen), angezeigt werden echter Schnitt und Anzahl. Umschaltbar nach Soße, Fleisch und Brot. In jeder Zeile stehen die Freunde, die den Laden bewertet haben, mit ihrem Schnitt.
+- **Push:** Check-ins von Freunden (pro Person höchstens alle 3 Stunden), Antworten auf eigene Beiträge und die Bewertungserinnerung. Neue Fragen gehen nur an Kenner (ab 5 bewerteten Läden in der Stadt), höchstens eine am Tag. Upvotes und Ranking-Änderungen zeigt nur die App. Jede Art ist abschaltbar, Freunde einzeln stummschaltbar.
+- **Belohnung:** eine Stufe nach bewerteten Läden (bisherige Stufen-Namen) neben dem Namen, ab Phase 2 mit den Upvotes. Wrapped gibt es nur im Dezember.
+- **Fällt weg:** Erfolge, Stempelkarte, Konsum-Statistik, private Notizen, „Was macht den Laden besonders?“ und der Kommentar beim Check-in.
+- **Profil:** öffentlich mit Name, Stufe und Bewertungen. Freunde sehen zusätzlich die Check-ins.
+- **Texte:** Einladung „Welcher Döner ist der beste in [Stadt]? Die Döner-App weiß es, und du siehst, wo ich gerade esse: [Link]“, App-Store-Untertitel „Der beste Döner deiner Stadt“.
+
+### Phase 1 – Bester Döner der Stadt
+
+- Tabs, Startscreen und Startaufgaben
+- Ranking-Tab
+- Neue Bewertung mit Foto und Häkchen „vor Ort“
+- Rad vor Ort mit Erinnerung
+- Push für Check-ins von Freunden: iOS über APNs, dazu Web Push
+- Öffentliches Profil mit Stufe, Wegfallendes entfernen
+- Universal Links, damit QR-Code, Einladungs- und Magic-Link die App öffnen (bis dahin: Code eintippen)
+- Melden und Blockieren (Pflicht für die Stores, spätestens mit den Fotos)
+
+### Phase 2 – Community
+
+- Fragen an den Umkreis, Antworten mit verlinktem Laden, Kommentare
+- Up- und Downvotes, ab −5 ausgeblendet, Upvotes neben dem Namen
+- Kenner-Push für neue Fragen, Kenner des Monats 👑 (meiste Upvotes in der Stadt)
+- Favoriten werden zur Merkliste „Will ich probieren“
+
+### Messen
+
+Skript über die Datenbank, Ziele nach 4 Wochen:
+- Anteil der Check-ins mit Bewertung danach
+- Läden der Stadt mit mindestens 3 Bewertungen
+- Ab Phase 2: Anteil der Fragen mit Antwort binnen 24 Stunden
+- K-Faktor über Einladungslinks
+
+### Voraussetzungen und Offenes
+
+- APNs-Schlüssel im Apple-Developer-Konto (für Push) und eine Subdomain ohne „api“ für die Links (für Universal Links)
 - Upload ins Play Store (bisher nur das App Bundle als Artefakt)
+- Später: Bezirke für Großstädte. Falls Fakes auftauchen, zählen nur noch Bewertungen mit Häkchen voll.
