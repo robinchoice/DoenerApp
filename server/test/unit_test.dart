@@ -1,10 +1,23 @@
+import 'package:doener_server/doener_server.dart';
 import 'package:doener_server/src/google_places.dart';
 import 'package:doener_server/src/http.dart';
 import 'package:doener_server/src/places.dart';
 import 'package:doener_server/src/social.dart';
+import 'package:http/http.dart' as http;
+import 'package:postgres/postgres.dart';
+import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('health fails while the database is unreachable', () async {
+    final config = Config(database: Endpoint(host: 'localhost', port: 1, database: 'doener'), webDir: '/nonexistent');
+    final db = openPool(config);
+    addTearDown(db.close);
+    final handler = buildHandler(Deps(db: db, config: config, mailer: LogMailer(), httpClient: http.Client()));
+    final response = await handler(Request('GET', Uri.parse('http://localhost/api/v1/health')));
+    expect(response.statusCode, 503);
+  });
+
   test('tiles cover the requested box', () {
     final tiles = tilesCovering(minLat: 47.99, minLon: 7.83, maxLat: 48.02, maxLon: 7.86);
     expect(tiles, hasLength(4));

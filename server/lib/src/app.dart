@@ -14,7 +14,15 @@ import 'social.dart';
 /// API under `/api/v1`, the Flutter web build (if present) everywhere else.
 Handler buildHandler(Deps deps) {
   final api = Router(notFoundHandler: (_) => json({'error': 'Nicht gefunden'}, status: 404))
-    ..get('/health', (Request _) => json({'status': 'ok'}));
+    ..get('/health', (Request _) async {
+      try {
+        await deps.db.execute('SELECT 1');
+        return json({'status': 'ok'});
+      } catch (e) {
+        print('Health check failed: $e');
+        return json({'status': 'database unavailable'}, status: 503);
+      }
+    });
   mountAuth(api, deps);
   mountPlaces(api, deps);
   mountRanking(api, deps);

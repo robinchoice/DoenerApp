@@ -151,6 +151,12 @@ void main() {
     expect(moved.single.single, 2);
   });
 
+  test('health checks the database', () async {
+    final (status, body) = await call('GET', '/health');
+    expect(status, 200);
+    expect(body, {'status': 'ok'});
+  });
+
   group('auth', () {
     test('magic link code flow', () async {
       expect((await call('POST', '/auth/login', body: {'email': 'kaputt'})).$1, 400);
