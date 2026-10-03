@@ -31,6 +31,9 @@ FROM scratch
 COPY --from=server /runtime/ /
 # Outgoing TLS (Google Places, SMTP) needs the CA bundle.
 COPY --from=server /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+# Coolify's healthcheck runs through /bin/sh with curl or wget. Busybox picks the applet by file name.
+COPY --from=busybox:1.37-musl /bin/busybox /bin/sh
+COPY --from=busybox:1.37-musl /bin/busybox /bin/wget
 COPY --from=server /server /app/server
 COPY --from=web /src/app/build/web /app/web
 ENV WEB_DIR=/app/web PORT=8080
