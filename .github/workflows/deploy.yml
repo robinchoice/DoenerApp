@@ -58,7 +58,7 @@ jobs:
           }
           # Coolify auf den konkreten Commit-SHA-Tag setzen (umgeht den 'latest'-Image-Cache,
           # der sonst das alte Image behält), dann force-deployen.
-          coolify -X PATCH "https://coolify.diespaetzles.lol/api/v1/applications/$APP_UUID" \
+          coolify -X PATCH "https://coolify.pleasance.org/api/v1/applications/$APP_UUID" \
             -H "Content-Type: application/json" \
             -d "{\"docker_registry_image_tag\": \"${{ github.sha }}\"}"
-          coolify -X POST "https://coolify.diespaetzles.lol/api/v1/deploy?uuid=$APP_UUID&force=true"
+          coolify -X POST "https://coolify.pleasance.org/api/v1/deploy?uuid=$APP_UUID&force=true"

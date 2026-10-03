@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-const _productionApi = 'https://doener-api.diespaetzles.lol/api/v1';
+const _productionApi = 'https://doener-api.pleasance.org/api/v1';
 const _apiFromBuild = String.fromEnvironment('API_BASE');
 
 /// Build-time default: `--dart-define=API_BASE=…`, otherwise same origin on
